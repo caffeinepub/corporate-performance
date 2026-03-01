@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Font Declarations ─── */
+@font-face {
+  font-family: "Sora";
+  src: url("/assets/fonts/Sora[wght].woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans[wght].woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── Design Tokens ─── */
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* Neutral/Base — near-white with a cool tint */
+    --background: 0.98 0.004 252;
+    --foreground: 0.18 0.02 258;
+
+    /* Card surfaces */
+    --card: 1 0 0;
+    --card-foreground: 0.18 0.02 258;
+    --popover: 1 0 0;
+    --popover-foreground: 0.18 0.02 258;
+
+    /* Primary — Deep Navy Blue */
+    --primary: 0.26 0.065 258;
+    --primary-foreground: 0.98 0.003 252;
+
+    /* Secondary — Soft slate */
+    --secondary: 0.94 0.012 252;
+    --secondary-foreground: 0.26 0.065 258;
+
+    /* Muted */
+    --muted: 0.95 0.008 252;
+    --muted-foreground: 0.52 0.022 258;
+
+    /* Accent — Warm Gold */
+    --accent: 0.82 0.14 72;
+    --accent-foreground: 0.12 0.025 258;
+
+    /* Destructive */
+    --destructive: 0.58 0.22 27;
+    --destructive-foreground: 0.98 0 0;
+
+    /* Borders & Inputs */
+    --border: 0.88 0.012 252;
+    --input: 0.88 0.012 252;
+    --ring: 0.26 0.065 258;
+
+    /* Charts */
+    --chart-1: 0.52 0.13 258;
+    --chart-2: 0.62 0.16 195;
+    --chart-3: 0.72 0.14 72;
+    --chart-4: 0.68 0.18 145;
+    --chart-5: 0.58 0.22 27;
+
+    /* Sidebar — slightly darker navy */
+    --sidebar: 0.22 0.058 258;
+    --sidebar-foreground: 0.92 0.01 258;
+    --sidebar-primary: 0.82 0.14 72;
+    --sidebar-primary-foreground: 0.12 0.025 258;
+    --sidebar-accent: 0.30 0.065 258;
+    --sidebar-accent-foreground: 0.95 0.006 252;
+    --sidebar-border: 0.30 0.055 258;
+    --sidebar-ring: 0.82 0.14 72;
+
+    /* Custom brand tokens */
+    --gold: 0.78 0.16 72;
+    --gold-light: 0.88 0.10 72;
+    --navy: 0.22 0.058 258;
+    --navy-light: 0.32 0.062 258;
+  }
+
+  .dark {
+    --background: 0.12 0.02 258;
+    --foreground: 0.93 0.008 252;
+    --card: 0.17 0.028 258;
+    --card-foreground: 0.93 0.008 252;
+    --popover: 0.19 0.032 258;
+    --popover-foreground: 0.93 0.008 252;
+    --primary: 0.82 0.14 72;
+    --primary-foreground: 0.12 0.025 258;
+    --secondary: 0.22 0.04 258;
+    --secondary-foreground: 0.93 0.008 252;
+    --muted: 0.22 0.04 258;
+    --muted-foreground: 0.62 0.022 258;
+    --accent: 0.28 0.055 258;
+    --accent-foreground: 0.93 0.008 252;
+    --destructive: 0.62 0.22 27;
+    --destructive-foreground: 0.93 0.008 252;
+    --border: 1 0 0 / 12%;
+    --input: 1 0 0 / 15%;
+    --ring: 0.82 0.14 72;
+    --chart-1: 0.62 0.18 258;
+    --chart-2: 0.68 0.16 195;
+    --chart-3: 0.82 0.14 72;
+    --chart-4: 0.72 0.18 145;
+    --chart-5: 0.68 0.22 27;
+    --sidebar: 0.15 0.028 258;
+    --sidebar-foreground: 0.93 0.008 252;
+    --sidebar-primary: 0.82 0.14 72;
+    --sidebar-primary-foreground: 0.12 0.025 258;
+    --sidebar-accent: 0.22 0.04 258;
+    --sidebar-accent-foreground: 0.93 0.008 252;
+    --sidebar-border: 1 0 0 / 10%;
+    --sidebar-ring: 0.82 0.14 72;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+/* ─── Custom Utilities ─── */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Sidebar glass shimmer on active item */
+  .sidebar-active-glow {
+    box-shadow: inset 3px 0 0 oklch(var(--gold)), 0 0 12px oklch(var(--gold) / 0.15);
+  }
+}
