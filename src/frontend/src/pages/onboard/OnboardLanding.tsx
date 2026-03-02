@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   BarChart3,
@@ -7,6 +8,7 @@ import {
   Key,
   Loader2,
   LogIn,
+  LogOut,
 } from "lucide-react";
 import { type Variants, motion } from "motion/react";
 import { useEffect } from "react";
@@ -32,14 +34,17 @@ const itemVariants: Variants = {
 
 export default function OnboardLanding() {
   const navigate = useNavigate();
-  const { identity, login, isLoggingIn, isInitializing } =
+  const queryClient = useQueryClient();
+  const { identity, login, clear, isLoggingIn, isInitializing } =
     useInternetIdentity();
   const { isFetching: isActorFetching } = useActor();
-  const { data: profile, isLoading: isProfileLoading } = useMyProfile();
+  const { data: profile, isFetching: isProfileLoading } = useMyProfile();
 
   const isAuthenticated = !!identity;
 
-  // Redirect authenticated users who already have a profile
+  // Redirect authenticated users who already have a profile.
+  // Use isFetching (not isLoading) so we wait for re-fetches triggered by actor
+  // changes — isLoading is only true on the very first fetch, not on refetches.
   useEffect(() => {
     if (!identity) return;
     if (isActorFetching || isProfileLoading) return;
@@ -167,7 +172,24 @@ export default function OnboardLanding() {
       </div>
 
       {/* Right panel — actions */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8">
+      <div className="flex-1 relative flex flex-col items-center justify-center p-8">
+        {isAuthenticated && (
+          <div className="absolute top-5 right-5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                queryClient.clear();
+                void navigate({ to: "/onboard" });
+                clear();
+              }}
+              className="gap-2 text-muted-foreground hover:text-foreground text-xs"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign out
+            </Button>
+          </div>
+        )}
         {/* Mobile logo */}
         <div className="flex lg:hidden items-center gap-3 mb-10">
           <div

@@ -9,6 +9,7 @@
 import { IDL } from '@icp-sdk/core/candid';
 
 export const KPIId = IDL.Text;
+export const OKRId = IDL.Text;
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
@@ -58,6 +59,7 @@ export const KPI = IDL.Record({
     'Annual' : IDL.Null,
   }),
   'bscAspectId' : IDL.Text,
+  'revisionNotes' : IDL.Opt(IDL.Text),
   'kpiId' : KPIId,
   'organizationNodeId' : IDL.Text,
   'companyId' : CompanyId,
@@ -91,6 +93,41 @@ export const MyProfile = IDL.Record({
   'fullName' : IDL.Text,
   'principalId' : IDL.Principal,
   'roles' : IDL.Vec(RoleAssignment),
+  'companyId' : CompanyId,
+});
+export const OKR = IDL.Record({
+  'initialTargetDate' : IDL.Text,
+  'okrStatus' : IDL.Variant({
+    'Approved' : IDL.Null,
+    'Draft' : IDL.Null,
+    'Rejected' : IDL.Null,
+    'Submitted' : IDL.Null,
+    'Revised' : IDL.Null,
+  }),
+  'okrId' : OKRId,
+  'approver2RoleAssignmentId' : IDL.Opt(IDL.Text),
+  'kpiYearId' : KPIYearId,
+  'objective' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'createdBy' : IDL.Principal,
+  'realization' : IDL.Variant({
+    'Done' : IDL.Null,
+    'OnProgress' : IDL.Null,
+    'Backlog' : IDL.Null,
+    'CarriedForNextYear' : IDL.Null,
+    'Pending' : IDL.Null,
+  }),
+  'ownerRoleAssignmentId' : IDL.Text,
+  'okrAspect' : IDL.Variant({
+    'People' : IDL.Null,
+    'Tools' : IDL.Null,
+    'Process' : IDL.Null,
+  }),
+  'revisedTargetDate' : IDL.Opt(IDL.Text),
+  'notes' : IDL.Opt(IDL.Text),
+  'keyResult' : IDL.Text,
+  'approver1RoleAssignmentId' : IDL.Opt(IDL.Text),
+  'targetValue' : IDL.Float64,
   'companyId' : CompanyId,
 });
 export const User = IDL.Record({
@@ -158,6 +195,7 @@ export const StrategicObjective = IDL.Record({
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'approveKPI' : IDL.Func([KPIId], [], []),
+  'approveOKR' : IDL.Func([OKRId], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'assignRole' : IDL.Func([UserId, IDL.Text, IDL.Opt(IDL.Text)], [], []),
   'createBSCAspect' : IDL.Func([IDL.Text], [BSCAspectId], []),
@@ -173,8 +211,8 @@ export const idlService = IDL.Service({
     ),
   'createKPIYear' : IDL.Func([IDL.Int], [KPIYearId], []),
   'createOKR' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
-      [IDL.Text],
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Float64, IDL.Text],
+      [OKRId],
       [],
     ),
   'createOrganizationNode' : IDL.Func(
@@ -189,6 +227,7 @@ export const idlService = IDL.Service({
     ),
   'deactivateRegistrationCode' : IDL.Func([IDL.Text], [], []),
   'deactivateRoleAssignment' : IDL.Func([RoleAssignmentId], [], []),
+  'deleteOKR' : IDL.Func([OKRId], [], []),
   'generateRegistrationCode' : IDL.Func([], [RegistrationCode], []),
   'getAuditLogs' : IDL.Func(
       [IDL.Opt(IDL.Text), IDL.Opt(IDL.Text)],
@@ -199,7 +238,7 @@ export const idlService = IDL.Service({
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getKPI' : IDL.Func([KPIId], [IDL.Opt(KPI)], ['query']),
   'getMyProfile' : IDL.Func([], [IDL.Opt(MyProfile)], ['query']),
-  'getOKR' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ['query']),
+  'getOKR' : IDL.Func([OKRId], [IDL.Opt(OKR)], ['query']),
   'getUserById' : IDL.Func([UserId], [IDL.Opt(User)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
@@ -219,6 +258,11 @@ export const idlService = IDL.Service({
       [IDL.Vec(KPI)],
       ['query'],
     ),
+  'listOKRs' : IDL.Func(
+      [IDL.Opt(IDL.Text), IDL.Opt(IDL.Text)],
+      [IDL.Vec(OKR)],
+      ['query'],
+    ),
   'listOrganizationNodes' : IDL.Func([], [IDL.Vec(OrgNode)], ['query']),
   'listRegistrationCodes' : IDL.Func(
       [],
@@ -236,11 +280,28 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'listUsers' : IDL.Func([], [IDL.Vec(User)], ['query']),
+  'rejectKPI' : IDL.Func([KPIId, IDL.Text], [], []),
+  'rejectOKR' : IDL.Func([OKRId, IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'setKPIYearStatus' : IDL.Func([KPIYearId, IDL.Text], [], []),
   'submitKPI' : IDL.Func([KPIId], [], []),
+  'submitOKR' : IDL.Func([OKRId], [], []),
   'updateBSCAspect' : IDL.Func([BSCAspectId, IDL.Text], [], []),
   'updateKPIProgress' : IDL.Func([KPIId, IDL.Nat, IDL.Float64], [], []),
+  'updateOKR' : IDL.Func(
+      [
+        OKRId,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Float64,
+        IDL.Text,
+        IDL.Opt(IDL.Text),
+      ],
+      [],
+      [],
+    ),
+  'updateOKRProgress' : IDL.Func([OKRId, IDL.Text, IDL.Opt(IDL.Text)], [], []),
   'updateOrganizationNode' : IDL.Func([OrgNodeId, IDL.Text], [], []),
   'updateStrategicObjective' : IDL.Func(
       [StrategicObjectiveId, IDL.Text],
@@ -254,6 +315,7 @@ export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
   const KPIId = IDL.Text;
+  const OKRId = IDL.Text;
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
@@ -303,6 +365,7 @@ export const idlFactory = ({ IDL }) => {
       'Annual' : IDL.Null,
     }),
     'bscAspectId' : IDL.Text,
+    'revisionNotes' : IDL.Opt(IDL.Text),
     'kpiId' : KPIId,
     'organizationNodeId' : IDL.Text,
     'companyId' : CompanyId,
@@ -336,6 +399,41 @@ export const idlFactory = ({ IDL }) => {
     'fullName' : IDL.Text,
     'principalId' : IDL.Principal,
     'roles' : IDL.Vec(RoleAssignment),
+    'companyId' : CompanyId,
+  });
+  const OKR = IDL.Record({
+    'initialTargetDate' : IDL.Text,
+    'okrStatus' : IDL.Variant({
+      'Approved' : IDL.Null,
+      'Draft' : IDL.Null,
+      'Rejected' : IDL.Null,
+      'Submitted' : IDL.Null,
+      'Revised' : IDL.Null,
+    }),
+    'okrId' : OKRId,
+    'approver2RoleAssignmentId' : IDL.Opt(IDL.Text),
+    'kpiYearId' : KPIYearId,
+    'objective' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'createdBy' : IDL.Principal,
+    'realization' : IDL.Variant({
+      'Done' : IDL.Null,
+      'OnProgress' : IDL.Null,
+      'Backlog' : IDL.Null,
+      'CarriedForNextYear' : IDL.Null,
+      'Pending' : IDL.Null,
+    }),
+    'ownerRoleAssignmentId' : IDL.Text,
+    'okrAspect' : IDL.Variant({
+      'People' : IDL.Null,
+      'Tools' : IDL.Null,
+      'Process' : IDL.Null,
+    }),
+    'revisedTargetDate' : IDL.Opt(IDL.Text),
+    'notes' : IDL.Opt(IDL.Text),
+    'keyResult' : IDL.Text,
+    'approver1RoleAssignmentId' : IDL.Opt(IDL.Text),
+    'targetValue' : IDL.Float64,
     'companyId' : CompanyId,
   });
   const User = IDL.Record({
@@ -403,6 +501,7 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'approveKPI' : IDL.Func([KPIId], [], []),
+    'approveOKR' : IDL.Func([OKRId], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'assignRole' : IDL.Func([UserId, IDL.Text, IDL.Opt(IDL.Text)], [], []),
     'createBSCAspect' : IDL.Func([IDL.Text], [BSCAspectId], []),
@@ -426,8 +525,8 @@ export const idlFactory = ({ IDL }) => {
       ),
     'createKPIYear' : IDL.Func([IDL.Int], [KPIYearId], []),
     'createOKR' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
-        [IDL.Text],
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Float64, IDL.Text],
+        [OKRId],
         [],
       ),
     'createOrganizationNode' : IDL.Func(
@@ -442,6 +541,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'deactivateRegistrationCode' : IDL.Func([IDL.Text], [], []),
     'deactivateRoleAssignment' : IDL.Func([RoleAssignmentId], [], []),
+    'deleteOKR' : IDL.Func([OKRId], [], []),
     'generateRegistrationCode' : IDL.Func([], [RegistrationCode], []),
     'getAuditLogs' : IDL.Func(
         [IDL.Opt(IDL.Text), IDL.Opt(IDL.Text)],
@@ -452,7 +552,7 @@ export const idlFactory = ({ IDL }) => {
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getKPI' : IDL.Func([KPIId], [IDL.Opt(KPI)], ['query']),
     'getMyProfile' : IDL.Func([], [IDL.Opt(MyProfile)], ['query']),
-    'getOKR' : IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ['query']),
+    'getOKR' : IDL.Func([OKRId], [IDL.Opt(OKR)], ['query']),
     'getUserById' : IDL.Func([UserId], [IDL.Opt(User)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
@@ -472,6 +572,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(KPI)],
         ['query'],
       ),
+    'listOKRs' : IDL.Func(
+        [IDL.Opt(IDL.Text), IDL.Opt(IDL.Text)],
+        [IDL.Vec(OKR)],
+        ['query'],
+      ),
     'listOrganizationNodes' : IDL.Func([], [IDL.Vec(OrgNode)], ['query']),
     'listRegistrationCodes' : IDL.Func(
         [],
@@ -489,11 +594,32 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'listUsers' : IDL.Func([], [IDL.Vec(User)], ['query']),
+    'rejectKPI' : IDL.Func([KPIId, IDL.Text], [], []),
+    'rejectOKR' : IDL.Func([OKRId, IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'setKPIYearStatus' : IDL.Func([KPIYearId, IDL.Text], [], []),
     'submitKPI' : IDL.Func([KPIId], [], []),
+    'submitOKR' : IDL.Func([OKRId], [], []),
     'updateBSCAspect' : IDL.Func([BSCAspectId, IDL.Text], [], []),
     'updateKPIProgress' : IDL.Func([KPIId, IDL.Nat, IDL.Float64], [], []),
+    'updateOKR' : IDL.Func(
+        [
+          OKRId,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Float64,
+          IDL.Text,
+          IDL.Opt(IDL.Text),
+        ],
+        [],
+        [],
+      ),
+    'updateOKRProgress' : IDL.Func(
+        [OKRId, IDL.Text, IDL.Opt(IDL.Text)],
+        [],
+        [],
+      ),
     'updateOrganizationNode' : IDL.Func([OrgNodeId, IDL.Text], [], []),
     'updateStrategicObjective' : IDL.Func(
         [StrategicObjectiveId, IDL.Text],

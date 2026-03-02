@@ -1,10 +1,20 @@
 import { Button } from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { BarChart3, Clock, LogOut } from "lucide-react";
 import { motion } from "motion/react";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 export default function PendingPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { clear } = useInternetIdentity();
+
+  const handleSignOut = () => {
+    queryClient.clear();
+    void navigate({ to: "/onboard" });
+    clear();
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
@@ -76,7 +86,12 @@ export default function PendingPage() {
             </ul>
           </div>
 
-          <Button variant="outline" size="sm" onClick={clear} className="gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSignOut}
+            className="gap-2"
+          >
             <LogOut className="w-4 h-4" />
             Sign out
           </Button>

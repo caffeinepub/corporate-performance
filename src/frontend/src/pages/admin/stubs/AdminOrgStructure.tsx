@@ -79,6 +79,8 @@ function getNodeTypeLabel(nodeType: NodeType): string {
       return "Division";
     case NodeType.Department:
       return "Department";
+    default:
+      return "";
   }
 }
 
@@ -159,6 +161,16 @@ function getNodeTypeStyle(nodeType: NodeType): NodeBadgeStyleProps {
         iconColor: "oklch(0.85 0.16 72)",
         indent: "84px",
         connectorColor: "oklch(0.40 0.065 65)",
+      };
+    default:
+      return {
+        bg: "oklch(0.28 0.022 258)",
+        text: "oklch(0.88 0.022 258)",
+        dot: "oklch(0.72 0.022 258)",
+        iconBg: "oklch(0.34 0.022 258)",
+        iconColor: "oklch(0.80 0.022 258)",
+        indent: "0",
+        connectorColor: "oklch(0.40 0.022 258)",
       };
   }
 }

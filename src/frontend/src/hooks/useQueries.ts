@@ -1,6 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { MyProfile, OrgNode, RegistrationCodeRecord } from "../backend.d";
+import type {
+  BSCAspect,
+  KPI,
+  KPIYear,
+  MyProfile,
+  OKR,
+  OrgNode,
+  RegistrationCodeRecord,
+  RoleAssignment,
+  StrategicObjective,
+  User,
+} from "../backend.d";
 import type { Variant_Division_Director_PresidentDirector_Department } from "../backend.d";
+import type {
+  Variant_Approved_Draft_Rejected_Submitted_Revised,
+  Variant_Approved_Draft_Submitted_Revised,
+  Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending,
+  Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual,
+  Variant_Open_Closed,
+  Variant_People_Tools_Process,
+} from "../backend.d";
 import { useActor } from "./useActor";
 
 // ─── Candid Variant Normalizer ────────────────────────────────────────────────
@@ -34,7 +53,9 @@ export function useMyProfile() {
       return actor.getMyProfile();
     },
     enabled: !!actor && !isFetching,
-    staleTime: 30_000,
+    // No staleTime — always refetch when actor changes so role-based redirects
+    // pick up the correct profile immediately after Internet Identity login.
+    staleTime: 0,
   });
 }
 
@@ -197,6 +218,680 @@ export function useUpdateOrganizationNode() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["orgNodes"] });
+    },
+  });
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+export function useListUsers() {
+  const { actor, isFetching } = useActor();
+  return useQuery<User[]>({
+    queryKey: ["users"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.listUsers();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useUpdateUserStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      newStatus,
+    }: {
+      userId: string;
+      newStatus: "ACTIVE" | "INACTIVE";
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.updateUserStatus(userId, newStatus);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["users"] });
+      void queryClient.invalidateQueries({ queryKey: ["roleAssignments"] });
+      void queryClient.invalidateQueries({ queryKey: ["myProfile"] });
+    },
+  });
+}
+
+// ─── Role Assignments ─────────────────────────────────────────────────────────
+
+function normalizeRoleAssignment(raw: RoleAssignment): RoleAssignment {
+  return { ...raw, roleType: fromCandidVariant(raw.roleType) };
+}
+
+export function useListRoleAssignments(userId?: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<RoleAssignment[]>({
+    queryKey: ["roleAssignments", userId ?? "all"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const raw = await actor.listRoleAssignments(userId ?? null);
+      return raw.map(normalizeRoleAssignment);
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// Maps frontend enum values (PascalCase) to backend-expected strings (SCREAMING_SNAKE_CASE)
+function toBackendRoleType(roleType: string): string {
+  switch (roleType) {
+    case "CompanyAdmin":
+      return "COMPANY_ADMIN";
+    case "PresidentDirector":
+      return "PRESIDENT_DIRECTOR";
+    case "Director":
+      return "DIRECTOR";
+    case "DivisionHead":
+      return "DIVISION_HEAD";
+    case "DepartmentHead":
+      return "DEPARTMENT_HEAD";
+    default:
+      return roleType;
+  }
+}
+
+export function useAssignRole() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      roleType,
+      orgNodeId,
+    }: {
+      userId: string;
+      roleType: string;
+      orgNodeId: string | null;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.assignRole(userId, toBackendRoleType(roleType), orgNodeId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["roleAssignments"] });
+      void queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+  });
+}
+
+export function useDeactivateRoleAssignment() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (assignmentId: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.deactivateRoleAssignment(assignmentId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["roleAssignments"] });
+    },
+  });
+}
+
+// ─── KPI Years ────────────────────────────────────────────────────────────────
+
+function normalizeKPIYear(raw: KPIYear): KPIYear {
+  return {
+    ...raw,
+    status: fromCandidVariant<Variant_Open_Closed>(raw.status),
+  };
+}
+
+export function useListKPIYears() {
+  const { actor, isFetching } = useActor();
+  return useQuery<KPIYear[]>({
+    queryKey: ["kpiYears"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const raw = await actor.listKPIYears();
+      return raw.map(normalizeKPIYear);
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateKPIYear() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (year: bigint) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.createKPIYear(year);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["kpiYears"] });
+    },
+  });
+}
+
+export function useSetKPIYearStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      kpiYearId,
+      newStatus,
+    }: {
+      kpiYearId: string;
+      newStatus: "OPEN" | "CLOSED";
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.setKPIYearStatus(kpiYearId, newStatus);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["kpiYears"] });
+    },
+  });
+}
+
+// ─── BSC Aspects ──────────────────────────────────────────────────────────────
+
+export function useListBSCAspects() {
+  const { actor, isFetching } = useActor();
+  return useQuery<BSCAspect[]>({
+    queryKey: ["bscAspects"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.listBSCAspects();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateBSCAspect() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (aspectName: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.createBSCAspect(aspectName);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bscAspects"] });
+    },
+  });
+}
+
+export function useUpdateBSCAspect() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      aspectId,
+      aspectName,
+    }: {
+      aspectId: string;
+      aspectName: string;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.updateBSCAspect(aspectId, aspectName);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["bscAspects"] });
+    },
+  });
+}
+
+// ─── Strategic Objectives ─────────────────────────────────────────────────────
+
+export function useListStrategicObjectives(_bscAspectId?: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<StrategicObjective[]>({
+    queryKey: ["strategicObjectives"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.listStrategicObjectives(null);
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateStrategicObjective() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      bscAspectId,
+      objectiveName,
+    }: {
+      bscAspectId: string;
+      objectiveName: string;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.createStrategicObjective(bscAspectId, objectiveName);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["strategicObjectives"] });
+    },
+  });
+}
+
+export function useUpdateStrategicObjective() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      objectiveId,
+      objectiveName,
+    }: {
+      objectiveId: string;
+      objectiveName: string;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.updateStrategicObjective(objectiveId, objectiveName);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["strategicObjectives"] });
+    },
+  });
+}
+
+// ─── KPIs ─────────────────────────────────────────────────────────────────────
+
+function normalizeKPI(raw: KPI): KPI {
+  return {
+    ...raw,
+    kpiStatus: fromCandidVariant<Variant_Approved_Draft_Submitted_Revised>(
+      raw.kpiStatus,
+    ),
+    kpiPeriod:
+      fromCandidVariant<Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual>(
+        raw.kpiPeriod,
+      ),
+  };
+}
+
+// Maps frontend period values to backend-expected strings
+function toBackendPeriod(period: string): string {
+  switch (period) {
+    case "OneTime":
+      return "ONETIME";
+    case "Annual":
+      return "ANNUAL";
+    case "Monthly":
+      return "MONTHLY";
+    case "Quarterly":
+      return "QUARTERLY";
+    case "SemiAnnual":
+      return "SEMI_ANNUAL";
+    default:
+      return period;
+  }
+}
+
+export function useListKPIs(
+  kpiYearId?: string,
+  orgNodeId?: string,
+  statusFilter?: string,
+) {
+  const { actor, isFetching } = useActor();
+  return useQuery<KPI[]>({
+    queryKey: [
+      "kpis",
+      kpiYearId ?? null,
+      orgNodeId ?? null,
+      statusFilter ?? null,
+    ],
+    queryFn: async () => {
+      if (!actor) return [];
+      const raw = await actor.listKPIs(
+        kpiYearId ?? null,
+        orgNodeId ?? null,
+        statusFilter ?? null,
+      );
+      return raw.map(normalizeKPI);
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateKPI() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      kpiYearId,
+      bscAspectId,
+      strategicObjectiveId,
+      organizationNodeId,
+      kpiMeasurement,
+      kpiPeriod,
+      kpiWeight,
+    }: {
+      kpiYearId: string;
+      bscAspectId: string;
+      strategicObjectiveId: string;
+      organizationNodeId: string;
+      kpiMeasurement: string;
+      kpiPeriod: string;
+      kpiWeight: number;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.createKPI(
+        kpiYearId,
+        bscAspectId,
+        strategicObjectiveId,
+        organizationNodeId,
+        kpiMeasurement,
+        toBackendPeriod(kpiPeriod),
+        kpiWeight,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["kpis"] });
+    },
+  });
+}
+
+export function useUpdateKPI() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      kpiId,
+      bscAspectId,
+      strategicObjectiveId,
+      kpiMeasurement,
+      kpiPeriod,
+      kpiWeight,
+    }: {
+      kpiId: string;
+      bscAspectId: string;
+      strategicObjectiveId: string;
+      kpiMeasurement: string;
+      kpiPeriod: string;
+      kpiWeight: number;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      // updateKPI updates in-place — kpiYearId and organizationNodeId are immutable
+      return (actor as any).updateKPI(
+        kpiId,
+        bscAspectId,
+        strategicObjectiveId,
+        kpiMeasurement,
+        toBackendPeriod(kpiPeriod),
+        kpiWeight,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["kpis"] });
+    },
+  });
+}
+
+export function useDeleteKPI() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (kpiId: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      return (actor as any).deleteKPI(kpiId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["kpis"] });
+    },
+  });
+}
+
+export function useSubmitKPI() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (kpiId: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.submitKPI(kpiId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["kpis"] });
+    },
+  });
+}
+
+export function useUpdateKPIProgress() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      kpiId,
+      periodIndex,
+      achievement,
+    }: {
+      kpiId: string;
+      periodIndex: number;
+      achievement: number;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.updateKPIProgress(kpiId, BigInt(periodIndex), achievement);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["kpis"] });
+    },
+  });
+}
+
+// ─── OKRs ─────────────────────────────────────────────────────────────────────
+
+function normalizeOKR(raw: OKR): OKR {
+  return {
+    ...raw,
+    okrStatus:
+      fromCandidVariant<Variant_Approved_Draft_Rejected_Submitted_Revised>(
+        raw.okrStatus,
+      ),
+    okrAspect: fromCandidVariant<Variant_People_Tools_Process>(raw.okrAspect),
+    realization:
+      fromCandidVariant<Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending>(
+        raw.realization,
+      ),
+  };
+}
+
+export function useListOKRs(kpiYearId?: string, statusFilter?: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<OKR[]>({
+    queryKey: ["okrs", kpiYearId ?? null, statusFilter ?? null],
+    queryFn: async () => {
+      if (!actor) return [];
+      const raw = await actor.listOKRs(kpiYearId ?? null, statusFilter ?? null);
+      return raw.map(normalizeOKR);
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateOKR() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      kpiYearId,
+      okrAspect,
+      objective,
+      keyResult,
+      targetValue,
+      initialTargetDate,
+    }: {
+      kpiYearId: string;
+      okrAspect: string;
+      objective: string;
+      keyResult: string;
+      targetValue: number;
+      initialTargetDate: string;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.createOKR(
+        kpiYearId,
+        okrAspect,
+        objective,
+        keyResult,
+        targetValue,
+        initialTargetDate,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["okrs"] });
+    },
+  });
+}
+
+export function useUpdateOKR() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      okrId,
+      okrAspect,
+      objective,
+      keyResult,
+      targetValue,
+      initialTargetDate,
+      revisedTargetDate,
+    }: {
+      okrId: string;
+      okrAspect: string;
+      objective: string;
+      keyResult: string;
+      targetValue: number;
+      initialTargetDate: string;
+      revisedTargetDate: string | null;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.updateOKR(
+        okrId,
+        okrAspect,
+        objective,
+        keyResult,
+        targetValue,
+        initialTargetDate,
+        revisedTargetDate,
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["okrs"] });
+    },
+  });
+}
+
+export function useSubmitOKR() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (okrId: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.submitOKR(okrId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["okrs"] });
+    },
+  });
+}
+
+export function useDeleteOKR() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (okrId: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.deleteOKR(okrId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["okrs"] });
+    },
+  });
+}
+
+export function useUpdateOKRProgress() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      okrId,
+      realization,
+      notes,
+    }: {
+      okrId: string;
+      realization: string;
+      notes: string | null;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.updateOKRProgress(okrId, realization, notes);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["okrs"] });
+    },
+  });
+}
+
+// ─── Approval Actions ─────────────────────────────────────────────────────────
+
+export function useApproveKPI() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (kpiId: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.approveKPI(kpiId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["kpis"] });
+    },
+  });
+}
+
+export function useApproveOKR() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (okrId: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.approveOKR(okrId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["okrs"] });
+    },
+  });
+}
+
+export function useRejectOKR() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      okrId,
+      revisionNotes,
+    }: {
+      okrId: string;
+      revisionNotes: string;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.rejectOKR(okrId, revisionNotes);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["okrs"] });
+    },
+  });
+}
+
+export function useRejectKPI() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      kpiId,
+      revisionNotes,
+    }: {
+      kpiId: string;
+      revisionNotes: string;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.rejectKPI(kpiId, revisionNotes);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["kpis"] });
     },
   });
 }

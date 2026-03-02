@@ -50,6 +50,7 @@ export interface KPI {
     { 'SemiAnnual' : null } |
     { 'Annual' : null },
   'bscAspectId' : string,
+  'revisionNotes' : [] | [string],
   'kpiId' : KPIId,
   'organizationNodeId' : string,
   'companyId' : CompanyId,
@@ -75,6 +76,36 @@ export interface MyProfile {
   'roles' : Array<RoleAssignment>,
   'companyId' : CompanyId,
 }
+export interface OKR {
+  'initialTargetDate' : string,
+  'okrStatus' : { 'Approved' : null } |
+    { 'Draft' : null } |
+    { 'Rejected' : null } |
+    { 'Submitted' : null } |
+    { 'Revised' : null },
+  'okrId' : OKRId,
+  'approver2RoleAssignmentId' : [] | [string],
+  'kpiYearId' : KPIYearId,
+  'objective' : string,
+  'createdAt' : bigint,
+  'createdBy' : Principal,
+  'realization' : { 'Done' : null } |
+    { 'OnProgress' : null } |
+    { 'Backlog' : null } |
+    { 'CarriedForNextYear' : null } |
+    { 'Pending' : null },
+  'ownerRoleAssignmentId' : string,
+  'okrAspect' : { 'People' : null } |
+    { 'Tools' : null } |
+    { 'Process' : null },
+  'revisedTargetDate' : [] | [string],
+  'notes' : [] | [string],
+  'keyResult' : string,
+  'approver1RoleAssignmentId' : [] | [string],
+  'targetValue' : number,
+  'companyId' : CompanyId,
+}
+export type OKRId = string;
 export interface OrgNode {
   'nodeId' : OrgNodeId,
   'parentNodeId' : [] | [OrgNodeId],
@@ -146,6 +177,7 @@ export type UserRole = { 'admin' : null } |
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'approveKPI' : ActorMethod<[KPIId], undefined>,
+  'approveOKR' : ActorMethod<[OKRId], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'assignRole' : ActorMethod<[UserId, string, [] | [string]], undefined>,
   'createBSCAspect' : ActorMethod<[string], BSCAspectId>,
@@ -155,7 +187,10 @@ export interface _SERVICE {
     KPIId
   >,
   'createKPIYear' : ActorMethod<[bigint], KPIYearId>,
-  'createOKR' : ActorMethod<[string, string, string, string, string], string>,
+  'createOKR' : ActorMethod<
+    [string, string, string, string, number, string],
+    OKRId
+  >,
   'createOrganizationNode' : ActorMethod<
     [string, string, [] | [string]],
     OrgNodeId
@@ -166,13 +201,14 @@ export interface _SERVICE {
   >,
   'deactivateRegistrationCode' : ActorMethod<[string], undefined>,
   'deactivateRoleAssignment' : ActorMethod<[RoleAssignmentId], undefined>,
+  'deleteOKR' : ActorMethod<[OKRId], undefined>,
   'generateRegistrationCode' : ActorMethod<[], RegistrationCode>,
   'getAuditLogs' : ActorMethod<[[] | [string], [] | [string]], Array<AuditLog>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getKPI' : ActorMethod<[KPIId], [] | [KPI]>,
   'getMyProfile' : ActorMethod<[], [] | [MyProfile]>,
-  'getOKR' : ActorMethod<[string], [] | [string]>,
+  'getOKR' : ActorMethod<[OKRId], [] | [OKR]>,
   'getUserById' : ActorMethod<[UserId], [] | [User]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
@@ -183,6 +219,7 @@ export interface _SERVICE {
     [[] | [string], [] | [string], [] | [string]],
     Array<KPI>
   >,
+  'listOKRs' : ActorMethod<[[] | [string], [] | [string]], Array<OKR>>,
   'listOrganizationNodes' : ActorMethod<[], Array<OrgNode>>,
   'listRegistrationCodes' : ActorMethod<[], Array<RegistrationCodeRecord>>,
   'listRoleAssignments' : ActorMethod<[[] | [UserId]], Array<RoleAssignment>>,
@@ -191,11 +228,19 @@ export interface _SERVICE {
     Array<StrategicObjective>
   >,
   'listUsers' : ActorMethod<[], Array<User>>,
+  'rejectKPI' : ActorMethod<[KPIId, string], undefined>,
+  'rejectOKR' : ActorMethod<[OKRId, string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'setKPIYearStatus' : ActorMethod<[KPIYearId, string], undefined>,
   'submitKPI' : ActorMethod<[KPIId], undefined>,
+  'submitOKR' : ActorMethod<[OKRId], undefined>,
   'updateBSCAspect' : ActorMethod<[BSCAspectId, string], undefined>,
   'updateKPIProgress' : ActorMethod<[KPIId, bigint, number], undefined>,
+  'updateOKR' : ActorMethod<
+    [OKRId, string, string, string, number, string, [] | [string]],
+    undefined
+  >,
+  'updateOKRProgress' : ActorMethod<[OKRId, string, [] | [string]], undefined>,
   'updateOrganizationNode' : ActorMethod<[OrgNodeId, string], undefined>,
   'updateStrategicObjective' : ActorMethod<
     [StrategicObjectiveId, string],

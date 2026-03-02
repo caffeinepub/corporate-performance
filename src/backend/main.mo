@@ -6,10 +6,11 @@ import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import Text "mo:core/Text";
-import Option "mo:core/Option";
 import List "mo:core/List";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+
+
 
 actor {
   type CompanyId = Text;
@@ -24,6 +25,7 @@ actor {
   type TargetId = Text;
   type ProgressId = Text;
   type AuditId = Text;
+  type OKRId = Text;
 
   type Company = {
     companyId : CompanyId;
@@ -148,6 +150,7 @@ actor {
     kpiPeriod : { #OneTime; #Annual; #Monthly; #Quarterly; #SemiAnnual };
     kpiWeight : Float;
     kpiStatus : { #Draft; #Submitted; #Approved; #Revised };
+    revisionNotes : ?Text;
     createdAt : Int;
     createdBy : Principal;
     updatedAt : Int;
@@ -169,6 +172,26 @@ actor {
     score : Float;
     updatedAt : Int;
     updatedBy : Principal;
+  };
+
+  type OKR = {
+    okrId : OKRId;
+    companyId : CompanyId;
+    kpiYearId : KPIYearId;
+    ownerRoleAssignmentId : Text;
+    approver1RoleAssignmentId : ?Text;
+    approver2RoleAssignmentId : ?Text;
+    okrStatus : { #Draft; #Submitted; #Approved; #Revised; #Rejected };
+    okrAspect : { #Tools; #Process; #People };
+    objective : Text;
+    keyResult : Text;
+    targetValue : Float;
+    initialTargetDate : Text;
+    revisedTargetDate : ?Text;
+    realization : { #Backlog; #OnProgress; #Pending; #Done; #CarriedForNextYear };
+    notes : ?Text;
+    createdAt : Int;
+    createdBy : Principal;
   };
 
   type AuditLog = {
@@ -208,6 +231,7 @@ actor {
   let kpiProgress = Map.empty<ProgressId, KPIProgress>();
   let auditLogs = Map.empty<AuditId, AuditLog>();
   let userProfiles = Map.empty<Principal, UserProfile>();
+  let okrs = Map.empty<OKRId, OKR>();
 
   // Authorization Initialization
   let accessControlState = AccessControl.initState();
@@ -333,6 +357,55 @@ actor {
           };
         };
         (ultimateParentId, grandParentId, parentId);
+      };
+    };
+  };
+
+  func resolveOKRApprovalChain(userId : UserId) : (?Text, ?Text) {
+    let userRoles = getActiveRoleAssignments(userId);
+    let nonAdminRoles = userRoles.filter(
+      func(r) { r.roleType != #CompanyAdmin }
+    );
+    switch (nonAdminRoles.find(func(r) { r.orgNodeId.isSome() })) {
+      case (null) { (null, null) };
+      case (?role) {
+        switch (role.orgNodeId) {
+          case (null) { (null, null) };
+          case (?nodeId) {
+            let (_, grandParentId, parentId) = resolveHierarchy(nodeId);
+            var approver1 : ?Text = null;
+            var approver2 : ?Text = null;
+            switch (parentId) {
+              case (null) {};
+              case (?pid) {
+                let parentRoles = roleAssignments.values().toArray().filter(
+                  func(ra) {
+                    ra.activeStatus and
+                    (switch (ra.orgNodeId) { case (?nid) { nid == pid }; case (null) { false } })
+                  }
+                );
+                if (parentRoles.size() > 0) {
+                  approver1 := ?parentRoles[0].assignmentId;
+                };
+              };
+            };
+            switch (grandParentId) {
+              case (null) {};
+              case (?gpid) {
+                let grandParentRoles = roleAssignments.values().toArray().filter(
+                  func(ra) {
+                    ra.activeStatus and
+                    (switch (ra.orgNodeId) { case (?nid) { nid == gpid }; case (null) { false } })
+                  }
+                );
+                if (grandParentRoles.size() > 0) {
+                  approver2 := ?grandParentRoles[0].assignmentId;
+                };
+              };
+            };
+            (approver1, approver2);
+          };
+        };
       };
     };
   };
@@ -1108,6 +1181,7 @@ actor {
           kpiPeriod = periodVariant;
           kpiWeight;
           kpiStatus = #Draft;
+          revisionNotes = null;
           createdAt = Time.now();
           createdBy = caller;
           updatedAt = Time.now();
@@ -1117,6 +1191,116 @@ actor {
         kpis.add(kpiId, kpi);
         logAudit(user.companyId, "KPI", kpiId, "CREATE", caller);
         kpiId;
+      };
+    };
+  };
+
+  public shared ({ caller }) func updateKPI(
+    kpiId : KPIId,
+    bscAspectId : Text,
+    strategicObjectiveId : Text,
+    kpiMeasurement : Text,
+    kpiPeriod : Text,
+    kpiWeight : Float
+  ) : async () {
+    let user = requireActiveUser(caller);
+
+    switch (kpis.get(kpiId)) {
+      case (null) { Runtime.trap("KPI not found") };
+      case (?kpi) {
+        requireSameCompany(caller, kpi.companyId);
+
+        // Only DRAFT or REVISED KPIs can be updated
+        if (kpi.kpiStatus != #Draft and kpi.kpiStatus != #Revised) {
+          Runtime.trap("KPI can only be updated when in Draft or Revised status");
+        };
+
+        // Verify ownership
+        switch (roleAssignments.get(kpi.ownerRoleAssignmentId)) {
+          case (null) { Runtime.trap("Owner role assignment not found") };
+          case (?ownerRole) {
+            if (ownerRole.userId != user.userId) {
+              Runtime.trap("Unauthorized: Only the KPI owner can update it");
+            };
+          };
+        };
+
+        // Validate BSC Aspect
+        switch (bscAspects.get(bscAspectId)) {
+          case (null) { Runtime.trap("BSC Aspect not found") };
+          case (?aspect) {
+            requireSameCompany(caller, aspect.companyId);
+          };
+        };
+
+        // Validate Strategic Objective
+        switch (strategicObjectives.get(strategicObjectiveId)) {
+          case (null) { Runtime.trap("Strategic Objective not found") };
+          case (?objective) {
+            requireSameCompany(caller, objective.companyId);
+          };
+        };
+
+        let periodVariant = switch (kpiPeriod) {
+          case ("ONETIME") { #OneTime };
+          case ("ANNUAL") { #Annual };
+          case ("MONTHLY") { #Monthly };
+          case ("QUARTERLY") { #Quarterly };
+          case ("SEMI_ANNUAL") { #SemiAnnual };
+          case (_) { Runtime.trap("Invalid KPI period") };
+        };
+
+        let updated : KPI = {
+          kpiId = kpi.kpiId;
+          companyId = kpi.companyId;
+          ownerRoleAssignmentId = kpi.ownerRoleAssignmentId;
+          organizationNodeId = kpi.organizationNodeId;
+          approverUserId = kpi.approverUserId;
+          kpiYearId = kpi.kpiYearId;
+          bscAspectId;
+          strategicObjectiveId;
+          kpiMeasurement;
+          kpiPeriod = periodVariant;
+          kpiWeight;
+          kpiStatus = kpi.kpiStatus;
+          revisionNotes = kpi.revisionNotes;
+          createdAt = kpi.createdAt;
+          createdBy = kpi.createdBy;
+          updatedAt = Time.now();
+          updatedBy = caller;
+        };
+
+        kpis.add(kpiId, updated);
+        logAudit(user.companyId, "KPI", kpiId, "UPDATE", caller);
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteKPI(kpiId : KPIId) : async () {
+    let user = requireActiveUser(caller);
+
+    switch (kpis.get(kpiId)) {
+      case (null) { Runtime.trap("KPI not found") };
+      case (?kpi) {
+        requireSameCompany(caller, kpi.companyId);
+
+        // Only DRAFT or REVISED KPIs can be deleted
+        if (kpi.kpiStatus != #Draft and kpi.kpiStatus != #Revised) {
+          Runtime.trap("KPI can only be deleted when in Draft or Revised status");
+        };
+
+        // Verify ownership
+        switch (roleAssignments.get(kpi.ownerRoleAssignmentId)) {
+          case (null) { Runtime.trap("Owner role assignment not found") };
+          case (?ownerRole) {
+            if (ownerRole.userId != user.userId) {
+              Runtime.trap("Unauthorized: Only the KPI owner can delete it");
+            };
+          };
+        };
+
+        kpis.remove(kpiId);
+        logAudit(user.companyId, "KPI", kpiId, "DELETE", caller);
       };
     };
   };
@@ -1156,6 +1340,7 @@ actor {
           kpiPeriod = kpi.kpiPeriod;
           kpiWeight = kpi.kpiWeight;
           kpiStatus = #Submitted;
+          revisionNotes = kpi.revisionNotes;
           createdAt = kpi.createdAt;
           createdBy = kpi.createdBy;
           updatedAt = Time.now();
@@ -1226,6 +1411,7 @@ actor {
           kpiPeriod = kpi.kpiPeriod;
           kpiWeight = kpi.kpiWeight;
           kpiStatus = #Approved;
+          revisionNotes = kpi.revisionNotes;
           createdAt = kpi.createdAt;
           createdBy = kpi.createdBy;
           updatedAt = Time.now();
@@ -1234,6 +1420,87 @@ actor {
 
         kpis.add(kpiId, updated);
         logAudit(user.companyId, "KPI", kpiId, "APPROVE", caller);
+      };
+    };
+  };
+
+  public shared ({ caller }) func rejectKPI(kpiId : KPIId, revisionNotes : Text) : async () {
+    let user = requireActiveUser(caller);
+
+    switch (kpis.get(kpiId)) {
+      case (null) { Runtime.trap("KPI not found") };
+      case (?kpi) {
+        requireSameCompany(caller, kpi.companyId);
+
+        if (kpi.kpiStatus != #Submitted) {
+          Runtime.trap("KPI must be SUBMITTED to reject");
+        };
+
+        // Verify that rejecter is not the owner
+        switch (roleAssignments.get(kpi.ownerRoleAssignmentId)) {
+          case (null) { Runtime.trap("Owner role assignment not found") };
+          case (?ownerRole) {
+            if (ownerRole.userId == user.userId) {
+              Runtime.trap("Cannot reject your own KPI");
+            };
+          };
+        };
+
+        // Check if user has role in parent hierarchy or is admin
+        let userRoles = getActiveRoleAssignments(user.userId);
+        let isAdmin = not userRoles.filter(func(r) { r.roleType == #CompanyAdmin }).isEmpty();
+
+        if (not isAdmin) {
+          // Check if user has role in parent hierarchy
+          switch (orgNodes.get(kpi.organizationNodeId)) {
+            case (null) { Runtime.trap("Organization node not found") };
+            case (?node) {
+              var hasApprovalRight = false;
+              switch (node.parentNodeId) {
+                case (null) {};
+                case (?parentId) {
+                  let parentRoles = userRoles.filter(
+                    func(r) {
+                      switch (r.orgNodeId) {
+                        case (null) { false };
+                        case (?nid) { nid == parentId };
+                      };
+                    }
+                  );
+                  if (parentRoles.size() > 0) {
+                    hasApprovalRight := true;
+                  };
+                };
+              };
+              if (not hasApprovalRight) {
+                Runtime.trap("Unauthorized: User is not in approval hierarchy");
+              };
+            };
+          };
+        };
+
+        let updated : KPI = {
+          kpiId = kpi.kpiId;
+          companyId = kpi.companyId;
+          ownerRoleAssignmentId = kpi.ownerRoleAssignmentId;
+          organizationNodeId = kpi.organizationNodeId;
+          approverUserId = ?user.userId;
+          kpiYearId = kpi.kpiYearId;
+          bscAspectId = kpi.bscAspectId;
+          strategicObjectiveId = kpi.strategicObjectiveId;
+          kpiMeasurement = kpi.kpiMeasurement;
+          kpiPeriod = kpi.kpiPeriod;
+          kpiWeight = kpi.kpiWeight;
+          kpiStatus = #Revised;
+          revisionNotes = ?revisionNotes;
+          createdAt = kpi.createdAt;
+          createdBy = kpi.createdBy;
+          updatedAt = Time.now();
+          updatedBy = caller;
+        };
+
+        kpis.add(kpiId, updated);
+        logAudit(user.companyId, "KPI", kpiId, "REJECT", caller);
       };
     };
   };
@@ -1344,13 +1611,472 @@ actor {
     filtered;
   };
 
-  // OKR Domain (stubs)
-  public shared ({ caller }) func createOKR(okrYearId : Text, okrAspect : Text, objective : Text, keyResult : Text, initialTargetDate : Text) : async Text {
-    Runtime.trap("Not implemented");
+  // OKR Domain
+  public shared ({ caller }) func createOKR(
+    kpiYearId : Text,
+    okrAspect : Text,
+    objective : Text,
+    keyResult : Text,
+    targetValue : Float,
+    initialTargetDate : Text
+  ) : async OKRId {
+    let user = requireActiveUser(caller);
+
+    switch (kpiYears.get(kpiYearId)) {
+      case (null) { Runtime.trap("KPI Year not found") };
+      case (?year) {
+        requireSameCompany(caller, year.companyId);
+        if (year.status != #Open) {
+          Runtime.trap("KPI Year must be OPEN to create OKR");
+        };
+      };
+    };
+
+    if (objective == "") { Runtime.trap("Objective is required") };
+    if (keyResult == "") { Runtime.trap("Key Result is required") };
+
+    let aspectVariant = switch (okrAspect) {
+      case ("TOOLS") { #Tools };
+      case ("PROCESS") { #Process };
+      case ("PEOPLE") { #People };
+      case (_) { Runtime.trap("Invalid OKR aspect") };
+    };
+
+    let userRoles = getActiveRoleAssignments(user.userId);
+    let nonAdminRoles = userRoles.filter(func(r) { r.roleType != #CompanyAdmin });
+    let ownerRole = switch (nonAdminRoles.find(func(r) { r.orgNodeId.isSome() })) {
+      case (null) { Runtime.trap("User does not have an active role assignment for an organization node") };
+      case (?role) { role };
+    };
+
+    let (approver1, approver2) = resolveOKRApprovalChain(user.userId);
+
+    let okrId = generateId();
+    let okr : OKR = {
+      okrId;
+      companyId = user.companyId;
+      kpiYearId;
+      ownerRoleAssignmentId = ownerRole.assignmentId;
+      approver1RoleAssignmentId = approver1;
+      approver2RoleAssignmentId = approver2;
+      okrStatus = #Draft;
+      okrAspect = aspectVariant;
+      objective;
+      keyResult;
+      targetValue;
+      initialTargetDate;
+      revisedTargetDate = null;
+      realization = #Backlog;
+      notes = null;
+      createdAt = Time.now();
+      createdBy = caller;
+    };
+
+    okrs.add(okrId, okr);
+    logAudit(user.companyId, "OKR", okrId, "CREATE", caller);
+    okrId;
   };
 
-  public query ({ caller }) func getOKR(okrId : Text) : async ?Text {
-    Runtime.trap("Not implemented");
+  public shared ({ caller }) func updateOKR(
+    okrId : OKRId,
+    okrAspect : Text,
+    objective : Text,
+    keyResult : Text,
+    targetValue : Float,
+    initialTargetDate : Text,
+    revisedTargetDate : ?Text
+  ) : async () {
+    let user = requireActiveUser(caller);
+
+    switch (okrs.get(okrId)) {
+      case (null) { Runtime.trap("OKR not found") };
+      case (?okr) {
+        requireSameCompany(caller, okr.companyId);
+
+        switch (roleAssignments.get(okr.ownerRoleAssignmentId)) {
+          case (null) { Runtime.trap("Owner role assignment not found") };
+          case (?ownerRole) {
+            if (ownerRole.userId != user.userId) {
+              Runtime.trap("Unauthorized: Only the OKR owner can update");
+            };
+          };
+        };
+
+        if (okr.okrStatus != #Draft and okr.okrStatus != #Revised) {
+          Runtime.trap("OKR can only be updated when in DRAFT or REVISED status");
+        };
+
+        let aspectVariant = switch (okrAspect) {
+          case ("TOOLS") { #Tools };
+          case ("PROCESS") { #Process };
+          case ("PEOPLE") { #People };
+          case (_) { Runtime.trap("Invalid OKR aspect") };
+        };
+
+        let updated : OKR = {
+          okrId = okr.okrId;
+          companyId = okr.companyId;
+          kpiYearId = okr.kpiYearId;
+          ownerRoleAssignmentId = okr.ownerRoleAssignmentId;
+          approver1RoleAssignmentId = okr.approver1RoleAssignmentId;
+          approver2RoleAssignmentId = okr.approver2RoleAssignmentId;
+          okrStatus = okr.okrStatus;
+          okrAspect = aspectVariant;
+          objective;
+          keyResult;
+          targetValue;
+          initialTargetDate;
+          revisedTargetDate;
+          realization = okr.realization;
+          notes = okr.notes;
+          createdAt = okr.createdAt;
+          createdBy = okr.createdBy;
+        };
+
+        okrs.add(okrId, updated);
+        logAudit(user.companyId, "OKR", okrId, "UPDATE", caller);
+      };
+    };
+  };
+
+  public shared ({ caller }) func submitOKR(okrId : OKRId) : async () {
+    let user = requireActiveUser(caller);
+
+    switch (okrs.get(okrId)) {
+      case (null) { Runtime.trap("OKR not found") };
+      case (?okr) {
+        requireSameCompany(caller, okr.companyId);
+
+        switch (roleAssignments.get(okr.ownerRoleAssignmentId)) {
+          case (null) { Runtime.trap("Owner role assignment not found") };
+          case (?ownerRole) {
+            if (ownerRole.userId != user.userId) {
+              Runtime.trap("Unauthorized: Only the OKR owner can submit");
+            };
+          };
+        };
+
+        if (okr.okrStatus != #Draft and okr.okrStatus != #Revised) {
+          Runtime.trap("OKR must be in DRAFT or REVISED status to submit");
+        };
+
+        switch (kpiYears.get(okr.kpiYearId)) {
+          case (null) { Runtime.trap("KPI Year not found") };
+          case (?year) {
+            if (year.status != #Open) {
+              Runtime.trap("KPI Year must be OPEN to submit OKR");
+            };
+          };
+        };
+
+        if (okr.objective == "") { Runtime.trap("Objective is required") };
+        if (okr.keyResult == "") { Runtime.trap("Key Result is required") };
+
+        let updated : OKR = {
+          okrId = okr.okrId;
+          companyId = okr.companyId;
+          kpiYearId = okr.kpiYearId;
+          ownerRoleAssignmentId = okr.ownerRoleAssignmentId;
+          approver1RoleAssignmentId = okr.approver1RoleAssignmentId;
+          approver2RoleAssignmentId = okr.approver2RoleAssignmentId;
+          okrStatus = #Submitted;
+          okrAspect = okr.okrAspect;
+          objective = okr.objective;
+          keyResult = okr.keyResult;
+          targetValue = okr.targetValue;
+          initialTargetDate = okr.initialTargetDate;
+          revisedTargetDate = okr.revisedTargetDate;
+          realization = okr.realization;
+          notes = okr.notes;
+          createdAt = okr.createdAt;
+          createdBy = okr.createdBy;
+        };
+
+        okrs.add(okrId, updated);
+        logAudit(user.companyId, "OKR", okrId, "SUBMIT", caller);
+      };
+    };
+  };
+
+  public shared ({ caller }) func approveOKR(okrId : OKRId) : async () {
+    let user = requireActiveUser(caller);
+
+    switch (okrs.get(okrId)) {
+      case (null) { Runtime.trap("OKR not found") };
+      case (?okr) {
+        requireSameCompany(caller, okr.companyId);
+
+        if (okr.okrStatus != #Submitted) {
+          Runtime.trap("OKR must be in SUBMITTED status to approve");
+        };
+
+        switch (roleAssignments.get(okr.ownerRoleAssignmentId)) {
+          case (null) { Runtime.trap("Owner role assignment not found") };
+          case (?ownerRole) {
+            if (ownerRole.userId == user.userId) {
+              Runtime.trap("Cannot approve your own OKR");
+            };
+          };
+        };
+
+        let callerRoles = getActiveRoleAssignments(user.userId);
+        var isApprover = false;
+        switch (okr.approver1RoleAssignmentId) {
+          case (null) {};
+          case (?a1id) {
+            if (callerRoles.find(func(r) { r.assignmentId == a1id }) != null) {
+              isApprover := true;
+            };
+          };
+        };
+        switch (okr.approver2RoleAssignmentId) {
+          case (null) {};
+          case (?a2id) {
+            if (callerRoles.find(func(r) { r.assignmentId == a2id }) != null) {
+              isApprover := true;
+            };
+          };
+        };
+        if (not isApprover) {
+          Runtime.trap("Unauthorized: Not in approval chain for this OKR");
+        };
+
+        let updated : OKR = {
+          okrId = okr.okrId;
+          companyId = okr.companyId;
+          kpiYearId = okr.kpiYearId;
+          ownerRoleAssignmentId = okr.ownerRoleAssignmentId;
+          approver1RoleAssignmentId = okr.approver1RoleAssignmentId;
+          approver2RoleAssignmentId = okr.approver2RoleAssignmentId;
+          okrStatus = #Approved;
+          okrAspect = okr.okrAspect;
+          objective = okr.objective;
+          keyResult = okr.keyResult;
+          targetValue = okr.targetValue;
+          initialTargetDate = okr.initialTargetDate;
+          revisedTargetDate = okr.revisedTargetDate;
+          realization = okr.realization;
+          notes = okr.notes;
+          createdAt = okr.createdAt;
+          createdBy = okr.createdBy;
+        };
+
+        okrs.add(okrId, updated);
+        logAudit(user.companyId, "OKR", okrId, "APPROVE", caller);
+      };
+    };
+  };
+
+  public shared ({ caller }) func rejectOKR(okrId : OKRId, revisionNotes : Text) : async () {
+    let user = requireActiveUser(caller);
+
+    switch (okrs.get(okrId)) {
+      case (null) { Runtime.trap("OKR not found") };
+      case (?okr) {
+        requireSameCompany(caller, okr.companyId);
+
+        if (okr.okrStatus != #Submitted) {
+          Runtime.trap("OKR must be in SUBMITTED status to reject");
+        };
+
+        switch (roleAssignments.get(okr.ownerRoleAssignmentId)) {
+          case (null) { Runtime.trap("Owner role assignment not found") };
+          case (?ownerRole) {
+            if (ownerRole.userId == user.userId) {
+              Runtime.trap("Cannot reject your own OKR");
+            };
+          };
+        };
+
+        let callerRoles = getActiveRoleAssignments(user.userId);
+        var isApprover = false;
+        switch (okr.approver1RoleAssignmentId) {
+          case (null) {};
+          case (?a1id) {
+            if (callerRoles.find(func(r) { r.assignmentId == a1id }) != null) {
+              isApprover := true;
+            };
+          };
+        };
+        switch (okr.approver2RoleAssignmentId) {
+          case (null) {};
+          case (?a2id) {
+            if (callerRoles.find(func(r) { r.assignmentId == a2id }) != null) {
+              isApprover := true;
+            };
+          };
+        };
+        if (not isApprover) {
+          Runtime.trap("Unauthorized: Not in approval chain for this OKR");
+        };
+
+        let updated : OKR = {
+          okrId = okr.okrId;
+          companyId = okr.companyId;
+          kpiYearId = okr.kpiYearId;
+          ownerRoleAssignmentId = okr.ownerRoleAssignmentId;
+          approver1RoleAssignmentId = okr.approver1RoleAssignmentId;
+          approver2RoleAssignmentId = okr.approver2RoleAssignmentId;
+          okrStatus = #Revised;
+          okrAspect = okr.okrAspect;
+          objective = okr.objective;
+          keyResult = okr.keyResult;
+          targetValue = okr.targetValue;
+          initialTargetDate = okr.initialTargetDate;
+          revisedTargetDate = okr.revisedTargetDate;
+          realization = okr.realization;
+          notes = ?revisionNotes;
+          createdAt = okr.createdAt;
+          createdBy = okr.createdBy;
+        };
+
+        okrs.add(okrId, updated);
+        logAudit(user.companyId, "OKR", okrId, "REJECT", caller);
+      };
+    };
+  };
+
+  public shared ({ caller }) func updateOKRProgress(okrId : OKRId, realization : Text, notes : ?Text) : async () {
+    let user = requireActiveUser(caller);
+
+    switch (okrs.get(okrId)) {
+      case (null) { Runtime.trap("OKR not found") };
+      case (?okr) {
+        requireSameCompany(caller, okr.companyId);
+
+        switch (roleAssignments.get(okr.ownerRoleAssignmentId)) {
+          case (null) { Runtime.trap("Owner role assignment not found") };
+          case (?ownerRole) {
+            if (ownerRole.userId != user.userId) {
+              Runtime.trap("Unauthorized: Only the OKR owner can update progress");
+            };
+          };
+        };
+
+        if (okr.okrStatus != #Approved) {
+          Runtime.trap("OKR must be APPROVED to update progress");
+        };
+
+        switch (kpiYears.get(okr.kpiYearId)) {
+          case (null) { Runtime.trap("KPI Year not found") };
+          case (?year) {
+            if (year.status != #Open) {
+              Runtime.trap("KPI Year must be OPEN to update OKR progress");
+            };
+          };
+        };
+
+        let realizationVariant = switch (realization) {
+          case ("BACKLOG") { #Backlog };
+          case ("ON_PROGRESS") { #OnProgress };
+          case ("PENDING") { #Pending };
+          case ("DONE") { #Done };
+          case ("CARRIED_FOR_NEXT_YEAR") { #CarriedForNextYear };
+          case (_) { Runtime.trap("Invalid realization value") };
+        };
+
+        let updated : OKR = {
+          okrId = okr.okrId;
+          companyId = okr.companyId;
+          kpiYearId = okr.kpiYearId;
+          ownerRoleAssignmentId = okr.ownerRoleAssignmentId;
+          approver1RoleAssignmentId = okr.approver1RoleAssignmentId;
+          approver2RoleAssignmentId = okr.approver2RoleAssignmentId;
+          okrStatus = okr.okrStatus;
+          okrAspect = okr.okrAspect;
+          objective = okr.objective;
+          keyResult = okr.keyResult;
+          targetValue = okr.targetValue;
+          initialTargetDate = okr.initialTargetDate;
+          revisedTargetDate = okr.revisedTargetDate;
+          realization = realizationVariant;
+          notes;
+          createdAt = okr.createdAt;
+          createdBy = okr.createdBy;
+        };
+
+        okrs.add(okrId, updated);
+        logAudit(user.companyId, "OKR", okrId, "UPDATE_PROGRESS", caller);
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteOKR(okrId : OKRId) : async () {
+    let user = requireActiveUser(caller);
+
+    switch (okrs.get(okrId)) {
+      case (null) { Runtime.trap("OKR not found") };
+      case (?okr) {
+        requireSameCompany(caller, okr.companyId);
+
+        switch (roleAssignments.get(okr.ownerRoleAssignmentId)) {
+          case (null) { Runtime.trap("Owner role assignment not found") };
+          case (?ownerRole) {
+            if (ownerRole.userId != user.userId) {
+              Runtime.trap("Unauthorized: Only the OKR owner can delete");
+            };
+          };
+        };
+
+        if (okr.okrStatus != #Draft and okr.okrStatus != #Revised) {
+          Runtime.trap("OKR can only be deleted when in DRAFT or REVISED status");
+        };
+
+        okrs.remove(okrId);
+        logAudit(user.companyId, "OKR", okrId, "DELETE", caller);
+      };
+    };
+  };
+
+  public query ({ caller }) func getOKR(okrId : OKRId) : async ?OKR {
+    let user = requireCallerUser(caller);
+
+    switch (okrs.get(okrId)) {
+      case (null) { null };
+      case (?okr) {
+        if (okr.companyId != user.companyId) {
+          Runtime.trap("Unauthorized: Access denied to other company data");
+        };
+        ?okr;
+      };
+    };
+  };
+
+  public query ({ caller }) func listOKRs(kpiYearId : ?Text, statusFilter : ?Text) : async [OKR] {
+    let user = requireCallerUser(caller);
+
+    var filtered = okrs.values().toArray().filter(
+      func(o) { o.companyId == user.companyId }
+    );
+
+    switch (kpiYearId) {
+      case (null) {};
+      case (?yid) {
+        filtered := filtered.filter(func(o) { o.kpiYearId == yid });
+      };
+    };
+
+    switch (statusFilter) {
+      case (null) {};
+      case (?status) {
+        let statusVariant = switch (status) {
+          case ("DRAFT") { ?#Draft };
+          case ("SUBMITTED") { ?#Submitted };
+          case ("APPROVED") { ?#Approved };
+          case ("REVISED") { ?#Revised };
+          case ("REJECTED") { ?#Rejected };
+          case (_) { null };
+        };
+        switch (statusVariant) {
+          case (null) {};
+          case (?sv) {
+            filtered := filtered.filter(func(o) { o.okrStatus == sv });
+          };
+        };
+      };
+    };
+
+    filtered;
   };
 
   // Audit Logging
@@ -1381,3 +2107,4 @@ actor {
     filtered;
   };
 };
+

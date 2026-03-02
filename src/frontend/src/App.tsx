@@ -33,10 +33,10 @@ import AdminRoleAssignment from "./pages/admin/stubs/AdminRoleAssignment";
 import AdminStrategicObjectives from "./pages/admin/stubs/AdminStrategicObjectives";
 import AdminUsers from "./pages/admin/stubs/AdminUsers";
 
+import WorkspaceKPIProgress from "./pages/workspace/WorkspaceKPIProgress";
+// Workspace pages
+import WorkspaceKPIProposal from "./pages/workspace/WorkspaceKPIProposal";
 import WorkspaceKPIApproval from "./pages/workspace/stubs/WorkspaceKPIApproval";
-import WorkspaceKPIProgress from "./pages/workspace/stubs/WorkspaceKPIProgress";
-// Workspace stub pages
-import WorkspaceKPIProposal from "./pages/workspace/stubs/WorkspaceKPIProposal";
 import WorkspaceOKRApproval from "./pages/workspace/stubs/WorkspaceOKRApproval";
 import WorkspaceOKRProgress from "./pages/workspace/stubs/WorkspaceOKRProgress";
 import WorkspaceOKRProposal from "./pages/workspace/stubs/WorkspaceOKRProposal";
@@ -52,7 +52,7 @@ import {
 function RootGate() {
   const { identity, isInitializing } = useInternetIdentity();
   const { isFetching: isActorFetching } = useActor();
-  const { data: profile, isLoading: isProfileLoading } = useMyProfile();
+  const { data: profile, isFetching: isProfileLoading } = useMyProfile();
 
   const isLoading = isInitializing || isActorFetching || isProfileLoading;
 

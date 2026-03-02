@@ -64,6 +64,7 @@ export interface KPI {
     approverUserId?: string;
     kpiPeriod: Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual;
     bscAspectId: string;
+    revisionNotes?: string;
     kpiId: KPIId;
     organizationNodeId: string;
     companyId: CompanyId;
@@ -110,6 +111,7 @@ export interface OrgNode {
     companyId: CompanyId;
 }
 export type OrgNodeId = string;
+export type OKRId = string;
 export interface RegistrationCodeRecord {
     code: string;
     createdAt: bigint;
@@ -120,10 +122,36 @@ export interface RegistrationCodeRecord {
 export interface UserProfile {
     name: string;
 }
+export interface OKR {
+    initialTargetDate: string;
+    okrStatus: Variant_Approved_Draft_Rejected_Submitted_Revised;
+    okrId: OKRId;
+    approver2RoleAssignmentId?: string;
+    kpiYearId: KPIYearId;
+    objective: string;
+    createdAt: bigint;
+    createdBy: Principal;
+    realization: Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending;
+    ownerRoleAssignmentId: string;
+    okrAspect: Variant_People_Tools_Process;
+    revisedTargetDate?: string;
+    notes?: string;
+    keyResult: string;
+    approver1RoleAssignmentId?: string;
+    targetValue: number;
+    companyId: CompanyId;
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
     guest = "guest"
+}
+export enum Variant_Approved_Draft_Rejected_Submitted_Revised {
+    Approved = "Approved",
+    Draft = "Draft",
+    Rejected = "Rejected",
+    Submitted = "Submitted",
+    Revised = "Revised"
 }
 export enum Variant_Approved_Draft_Submitted_Revised {
     Approved = "Approved",
@@ -144,6 +172,13 @@ export enum Variant_Division_Director_PresidentDirector_Department {
     PresidentDirector = "PresidentDirector",
     Department = "Department"
 }
+export enum Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending {
+    Done = "Done",
+    OnProgress = "OnProgress",
+    Backlog = "Backlog",
+    CarriedForNextYear = "CarriedForNextYear",
+    Pending = "Pending"
+}
 export enum Variant_Inactive_Active_Unassigned {
     Inactive = "Inactive",
     Active = "Active",
@@ -160,26 +195,33 @@ export enum Variant_Open_Closed {
     Open = "Open",
     Closed = "Closed"
 }
+export enum Variant_People_Tools_Process {
+    People = "People",
+    Tools = "Tools",
+    Process = "Process"
+}
 export interface backendInterface {
     approveKPI(kpiId: KPIId): Promise<void>;
+    approveOKR(okrId: OKRId): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     assignRole(userId: UserId, roleType: string, organizationNodeId: string | null): Promise<void>;
     createBSCAspect(aspectName: string): Promise<BSCAspectId>;
     createCompany(companyName: string, adminFullName: string, email: string | null): Promise<CompanyId>;
     createKPI(kpiYearId: string, bscAspectId: string, strategicObjectiveId: string, organizationNodeId: string, kpiMeasurement: string, kpiPeriod: string, kpiWeight: number): Promise<KPIId>;
     createKPIYear(year: bigint): Promise<KPIYearId>;
-    createOKR(okrYearId: string, okrAspect: string, objective: string, keyResult: string, initialTargetDate: string): Promise<string>;
+    createOKR(kpiYearId: string, okrAspect: string, objective: string, keyResult: string, targetValue: number, initialTargetDate: string): Promise<OKRId>;
     createOrganizationNode(nodeType: string, nodeName: string, parentNodeId: string | null): Promise<OrgNodeId>;
     createStrategicObjective(bscAspectId: BSCAspectId, objectiveName: string): Promise<StrategicObjectiveId>;
     deactivateRegistrationCode(code: string): Promise<void>;
     deactivateRoleAssignment(assignmentId: RoleAssignmentId): Promise<void>;
+    deleteOKR(okrId: OKRId): Promise<void>;
     generateRegistrationCode(): Promise<RegistrationCode>;
     getAuditLogs(entityType: string | null, entityId: string | null): Promise<Array<AuditLog>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getKPI(kpiId: KPIId): Promise<KPI | null>;
     getMyProfile(): Promise<MyProfile | null>;
-    getOKR(okrId: string): Promise<string | null>;
+    getOKR(okrId: OKRId): Promise<OKR | null>;
     getUserById(userId: UserId): Promise<User | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
@@ -187,16 +229,22 @@ export interface backendInterface {
     listBSCAspects(): Promise<Array<BSCAspect>>;
     listKPIYears(): Promise<Array<KPIYear>>;
     listKPIs(kpiYearId: string | null, organizationNodeId: string | null, statusFilter: string | null): Promise<Array<KPI>>;
+    listOKRs(kpiYearId: string | null, statusFilter: string | null): Promise<Array<OKR>>;
     listOrganizationNodes(): Promise<Array<OrgNode>>;
     listRegistrationCodes(): Promise<Array<RegistrationCodeRecord>>;
     listRoleAssignments(userId: UserId | null): Promise<Array<RoleAssignment>>;
     listStrategicObjectives(bscAspectId: BSCAspectId | null): Promise<Array<StrategicObjective>>;
     listUsers(): Promise<Array<User>>;
+    rejectKPI(kpiId: KPIId, revisionNotes: string): Promise<void>;
+    rejectOKR(okrId: OKRId, revisionNotes: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     setKPIYearStatus(kpiYearId: KPIYearId, newStatus: string): Promise<void>;
     submitKPI(kpiId: KPIId): Promise<void>;
+    submitOKR(okrId: OKRId): Promise<void>;
     updateBSCAspect(aspectId: BSCAspectId, aspectName: string): Promise<void>;
     updateKPIProgress(kpiId: KPIId, periodIndex: bigint, achievement: number): Promise<void>;
+    updateOKR(okrId: OKRId, okrAspect: string, objective: string, keyResult: string, targetValue: number, initialTargetDate: string, revisedTargetDate: string | null): Promise<void>;
+    updateOKRProgress(okrId: OKRId, realization: string, notes: string | null): Promise<void>;
     updateOrganizationNode(nodeId: OrgNodeId, nodeName: string): Promise<void>;
     updateStrategicObjective(objectiveId: StrategicObjectiveId, objectiveName: string): Promise<void>;
     updateUserStatus(userId: UserId, newStatus: string): Promise<void>;
