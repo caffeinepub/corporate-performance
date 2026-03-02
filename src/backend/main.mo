@@ -10,8 +10,6 @@ import List "mo:core/List";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-
-
 actor {
   type CompanyId = Text;
   type UserId = Text;
@@ -217,7 +215,6 @@ actor {
     name : Text;
   };
 
-  // State Initialization
   let companies = Map.empty<CompanyId, Company>();
   let users = Map.empty<UserId, User>();
   let roleAssignments = Map.empty<RoleAssignmentId, RoleAssignment>();
@@ -233,11 +230,9 @@ actor {
   let userProfiles = Map.empty<Principal, UserProfile>();
   let okrs = Map.empty<OKRId, OKR>();
 
-  // Authorization Initialization
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  // Helper Functions
   func generateId() : Text {
     Time.now().toText();
   };
@@ -410,9 +405,7 @@ actor {
     };
   };
 
-  // Company Management
   public shared ({ caller }) func createCompany(companyName : Text, adminFullName : Text, email : ?Text) : async CompanyId {
-    // Check if caller already registered
     switch (getCallerUser(caller)) {
       case (?_) { Runtime.trap("Principal already registered in a company") };
       case (null) {};
@@ -468,7 +461,6 @@ actor {
     companyId;
   };
 
-  // Profile Management
   public query ({ caller }) func getMyProfile() : async ?MyProfile {
     let user = getCallerUser(caller);
     switch (user) {
@@ -507,7 +499,6 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  // Registration Codes
   public shared ({ caller }) func generateRegistrationCode() : async RegistrationCode {
     let user = requireCompanyAdmin(caller);
 
@@ -557,7 +548,6 @@ actor {
   };
 
   public shared ({ caller }) func joinCompany(code : Text, fullName : Text, email : ?Text) : async CompanyId {
-    // Check if caller already registered
     switch (getCallerUser(caller)) {
       case (?_) { Runtime.trap("Principal already registered in a company") };
       case (null) {};
@@ -570,7 +560,6 @@ actor {
           Runtime.trap("Registration code already used or deactivated");
         };
 
-        // Verify company exists
         switch (companies.get(record.companyId)) {
           case (null) { Runtime.trap("Company not found") };
           case (?_) {};
@@ -591,7 +580,6 @@ actor {
 
         users.add(userId, user);
 
-        // Deactivate code
         let updated : RegistrationCodeRecord = {
           code = record.code;
           companyId = record.companyId;
@@ -609,7 +597,6 @@ actor {
     };
   };
 
-  // User Management
   public query ({ caller }) func listUsers() : async [User] {
     let user = requireCallerUser(caller);
     if (not isCompanyAdmin(caller)) {
@@ -636,7 +623,6 @@ actor {
           case (_) { Runtime.trap("Invalid status") };
         };
 
-        // Check if trying to deactivate last active COMPANY_ADMIN
         if (status == #Inactive) {
           let roles = getActiveRoleAssignments(userId);
           let isAdmin = not roles.filter(func(r) { r.roleType == #CompanyAdmin }).isEmpty();
@@ -680,7 +666,6 @@ actor {
     };
   };
 
-  // Organization Structure
   public shared ({ caller }) func createOrganizationNode(nodeType : Text, nodeName : Text, parentNodeId : ?Text) : async OrgNodeId {
     let user = requireCompanyAdmin(caller);
 
@@ -692,15 +677,12 @@ actor {
       case (_) { Runtime.trap("Invalid node type") };
     };
 
-    // Validate hierarchy rules
     switch (nodeTypeVariant) {
       case (#PresidentDirector) {
-        // Must have no parent
         switch (parentNodeId) {
           case (?_) { Runtime.trap("PRESIDENT_DIRECTOR cannot have a parent") };
           case (null) {};
         };
-        // Check if one already exists
         let existing = orgNodes.values().toArray().filter(
           func(n) {
             n.companyId == user.companyId and n.nodeType == #PresidentDirector
@@ -818,7 +800,6 @@ actor {
     );
   };
 
-  // Role Assignment
   public shared ({ caller }) func assignRole(userId : UserId, roleType : Text, organizationNodeId : ?Text) : async () {
     let adminUser = requireCompanyAdmin(caller);
 
@@ -836,7 +817,6 @@ actor {
           case (_) { Runtime.trap("Invalid role type") };
         };
 
-        // Validate organization node if provided
         var hierarchy : (?Text, ?Text, ?Text) = (null, null, null);
         switch (organizationNodeId) {
           case (null) {
@@ -886,7 +866,6 @@ actor {
       case (?ra) {
         requireSameCompany(caller, ra.companyId);
 
-        // Check if trying to deactivate last active COMPANY_ADMIN
         if (ra.roleType == #CompanyAdmin and ra.activeStatus) {
           if (countActiveCompanyAdmins(ra.companyId) <= 1) {
             Runtime.trap("Cannot deactivate the last active COMPANY_ADMIN");
@@ -931,7 +910,6 @@ actor {
     };
   };
 
-  // KPI Year
   public shared ({ caller }) func createKPIYear(year : Int) : async KPIYearId {
     let user = requireCompanyAdmin(caller);
 
@@ -987,7 +965,6 @@ actor {
     );
   };
 
-  // BSC Aspects
   public shared ({ caller }) func createBSCAspect(aspectName : Text) : async BSCAspectId {
     let user = requireCompanyAdmin(caller);
 
@@ -1035,11 +1012,9 @@ actor {
     );
   };
 
-  // Strategic Objectives
   public shared ({ caller }) func createStrategicObjective(bscAspectId : BSCAspectId, objectiveName : Text) : async StrategicObjectiveId {
     let user = requireCompanyAdmin(caller);
 
-    // Validate BSC Aspect
     switch (bscAspects.get(bscAspectId)) {
       case (null) { Runtime.trap("BSC Aspect not found") };
       case (?aspect) {
@@ -1100,7 +1075,6 @@ actor {
     };
   };
 
-  // KPI Domain
   public shared ({ caller }) func createKPI(
     kpiYearId : Text,
     bscAspectId : Text,
@@ -1112,7 +1086,6 @@ actor {
   ) : async KPIId {
     let user = requireActiveUser(caller);
 
-    // Validate KPI Year
     switch (kpiYears.get(kpiYearId)) {
       case (null) { Runtime.trap("KPI Year not found") };
       case (?year) {
@@ -1120,7 +1093,6 @@ actor {
       };
     };
 
-    // Validate BSC Aspect
     switch (bscAspects.get(bscAspectId)) {
       case (null) { Runtime.trap("BSC Aspect not found") };
       case (?aspect) {
@@ -1128,7 +1100,6 @@ actor {
       };
     };
 
-    // Validate Strategic Objective
     switch (strategicObjectives.get(strategicObjectiveId)) {
       case (null) { Runtime.trap("Strategic Objective not found") };
       case (?objective) {
@@ -1136,7 +1107,6 @@ actor {
       };
     };
 
-    // Validate Organization Node
     switch (orgNodes.get(organizationNodeId)) {
       case (null) { Runtime.trap("Organization Node not found") };
       case (?node) {
@@ -1144,7 +1114,6 @@ actor {
       };
     };
 
-    // Find active role assignment for this node
     let userRoles = getActiveRoleAssignments(user.userId);
     let nodeRole = userRoles.find(
       func(r) {
@@ -1210,12 +1179,10 @@ actor {
       case (?kpi) {
         requireSameCompany(caller, kpi.companyId);
 
-        // Only DRAFT or REVISED KPIs can be updated
         if (kpi.kpiStatus != #Draft and kpi.kpiStatus != #Revised) {
           Runtime.trap("KPI can only be updated when in Draft or Revised status");
         };
 
-        // Verify ownership
         switch (roleAssignments.get(kpi.ownerRoleAssignmentId)) {
           case (null) { Runtime.trap("Owner role assignment not found") };
           case (?ownerRole) {
@@ -1225,7 +1192,6 @@ actor {
           };
         };
 
-        // Validate BSC Aspect
         switch (bscAspects.get(bscAspectId)) {
           case (null) { Runtime.trap("BSC Aspect not found") };
           case (?aspect) {
@@ -1233,7 +1199,6 @@ actor {
           };
         };
 
-        // Validate Strategic Objective
         switch (strategicObjectives.get(strategicObjectiveId)) {
           case (null) { Runtime.trap("Strategic Objective not found") };
           case (?objective) {
@@ -1284,12 +1249,10 @@ actor {
       case (?kpi) {
         requireSameCompany(caller, kpi.companyId);
 
-        // Only DRAFT or REVISED KPIs can be deleted
         if (kpi.kpiStatus != #Draft and kpi.kpiStatus != #Revised) {
           Runtime.trap("KPI can only be deleted when in Draft or Revised status");
         };
 
-        // Verify ownership
         switch (roleAssignments.get(kpi.ownerRoleAssignmentId)) {
           case (null) { Runtime.trap("Owner role assignment not found") };
           case (?ownerRole) {
@@ -1313,7 +1276,6 @@ actor {
       case (?kpi) {
         requireSameCompany(caller, kpi.companyId);
 
-        // Verify ownership
         switch (roleAssignments.get(kpi.ownerRoleAssignmentId)) {
           case (null) { Runtime.trap("Owner role assignment not found") };
           case (?ownerRole) {
@@ -1323,8 +1285,18 @@ actor {
           };
         };
 
-        if (kpi.kpiStatus != #Draft) {
-          Runtime.trap("KPI must be in DRAFT status to submit");
+        if (kpi.kpiStatus != #Draft and kpi.kpiStatus != #Revised) {
+          Runtime.trap("KPI must be in DRAFT or REVISED status to submit");
+        };
+
+        var finalStatus : { #Draft; #Submitted; #Approved; #Revised } = #Submitted;
+        switch (roleAssignments.get(kpi.ownerRoleAssignmentId)) {
+          case (null) {};
+          case (?ownerRole) {
+            if (ownerRole.roleType == #PresidentDirector) {
+              finalStatus := #Approved;
+            };
+          };
         };
 
         let updated : KPI = {
@@ -1332,14 +1304,14 @@ actor {
           companyId = kpi.companyId;
           ownerRoleAssignmentId = kpi.ownerRoleAssignmentId;
           organizationNodeId = kpi.organizationNodeId;
-          approverUserId = kpi.approverUserId;
+          approverUserId = if (finalStatus == #Approved) { ?user.userId } else { kpi.approverUserId };
           kpiYearId = kpi.kpiYearId;
           bscAspectId = kpi.bscAspectId;
           strategicObjectiveId = kpi.strategicObjectiveId;
           kpiMeasurement = kpi.kpiMeasurement;
           kpiPeriod = kpi.kpiPeriod;
           kpiWeight = kpi.kpiWeight;
-          kpiStatus = #Submitted;
+          kpiStatus = finalStatus;
           revisionNotes = kpi.revisionNotes;
           createdAt = kpi.createdAt;
           createdBy = kpi.createdBy;
@@ -1348,7 +1320,8 @@ actor {
         };
 
         kpis.add(kpiId, updated);
-        logAudit(user.companyId, "KPI", kpiId, "SUBMIT", caller);
+        let action = if (finalStatus == #Approved) { "SUBMIT_AUTO_APPROVED" } else { "SUBMIT" };
+        logAudit(user.companyId, "KPI", kpiId, action, caller);
       };
     };
   };
@@ -1365,12 +1338,10 @@ actor {
           Runtime.trap("KPI must be in SUBMITTED status to approve");
         };
 
-        // Verify approver is in hierarchy (simplified: check if user has role in parent node or is admin)
         let userRoles = getActiveRoleAssignments(user.userId);
         let isAdmin = not userRoles.filter(func(r) { r.roleType == #CompanyAdmin }).isEmpty();
 
         if (not isAdmin) {
-          // Check if user has role in parent hierarchy
           switch (orgNodes.get(kpi.organizationNodeId)) {
             case (null) { Runtime.trap("Organization node not found") };
             case (?node) {
@@ -1436,7 +1407,6 @@ actor {
           Runtime.trap("KPI must be SUBMITTED to reject");
         };
 
-        // Verify that rejecter is not the owner
         switch (roleAssignments.get(kpi.ownerRoleAssignmentId)) {
           case (null) { Runtime.trap("Owner role assignment not found") };
           case (?ownerRole) {
@@ -1446,12 +1416,10 @@ actor {
           };
         };
 
-        // Check if user has role in parent hierarchy or is admin
         let userRoles = getActiveRoleAssignments(user.userId);
         let isAdmin = not userRoles.filter(func(r) { r.roleType == #CompanyAdmin }).isEmpty();
 
         if (not isAdmin) {
-          // Check if user has role in parent hierarchy
           switch (orgNodes.get(kpi.organizationNodeId)) {
             case (null) { Runtime.trap("Organization node not found") };
             case (?node) {
@@ -1513,7 +1481,6 @@ actor {
       case (?kpi) {
         requireSameCompany(caller, kpi.companyId);
 
-        // Verify ownership
         switch (roleAssignments.get(kpi.ownerRoleAssignmentId)) {
           case (null) { Runtime.trap("Owner role assignment not found") };
           case (?ownerRole) {
@@ -1527,7 +1494,6 @@ actor {
           Runtime.trap("KPI must be APPROVED to update progress");
         };
 
-        // Verify KPI Year is OPEN
         switch (kpiYears.get(kpi.kpiYearId)) {
           case (null) { Runtime.trap("KPI Year not found") };
           case (?year) {
@@ -1543,7 +1509,7 @@ actor {
           kpiId;
           periodIndex;
           achievement;
-          score = 0.0; // Simplified scoring
+          score = 0.0;
           updatedAt = Time.now();
           updatedBy = caller;
         };
@@ -1611,7 +1577,6 @@ actor {
     filtered;
   };
 
-  // OKR Domain
   public shared ({ caller }) func createOKR(
     kpiYearId : Text,
     okrAspect : Text,
@@ -1772,6 +1737,16 @@ actor {
         if (okr.objective == "") { Runtime.trap("Objective is required") };
         if (okr.keyResult == "") { Runtime.trap("Key Result is required") };
 
+        var finalOKRStatus : { #Draft; #Submitted; #Approved; #Revised; #Rejected } = #Submitted;
+        switch (roleAssignments.get(okr.ownerRoleAssignmentId)) {
+          case (null) {};
+          case (?ownerRole) {
+            if (ownerRole.roleType == #PresidentDirector) {
+              finalOKRStatus := #Approved;
+            };
+          };
+        };
+
         let updated : OKR = {
           okrId = okr.okrId;
           companyId = okr.companyId;
@@ -1779,7 +1754,7 @@ actor {
           ownerRoleAssignmentId = okr.ownerRoleAssignmentId;
           approver1RoleAssignmentId = okr.approver1RoleAssignmentId;
           approver2RoleAssignmentId = okr.approver2RoleAssignmentId;
-          okrStatus = #Submitted;
+          okrStatus = finalOKRStatus;
           okrAspect = okr.okrAspect;
           objective = okr.objective;
           keyResult = okr.keyResult;
@@ -1793,7 +1768,8 @@ actor {
         };
 
         okrs.add(okrId, updated);
-        logAudit(user.companyId, "OKR", okrId, "SUBMIT", caller);
+        let okrAction = if (finalOKRStatus == #Approved) { "SUBMIT_AUTO_APPROVED" } else { "SUBMIT" };
+        logAudit(user.companyId, "OKR", okrId, okrAction, caller);
       };
     };
   };
@@ -2079,7 +2055,6 @@ actor {
     filtered;
   };
 
-  // Audit Logging
   public query ({ caller }) func getAuditLogs(entityType : ?Text, entityId : ?Text) : async [AuditLog] {
     let user = requireCallerUser(caller);
     if (not isCompanyAdmin(caller)) {
@@ -2107,4 +2082,3 @@ actor {
     filtered;
   };
 };
-

@@ -943,10 +943,12 @@ export default function WorkspaceOKRApproval() {
   const [selectedYear, setSelectedYear] = useState("all");
   const [selectedAspect, setSelectedAspect] = useState("all");
 
-  // Load submitted OKRs
+  // Load submitted OKRs — pass "SUBMITTED" (backend format) so the server-side
+  // filter actually matches and returns only Submitted OKRs. After an approval
+  // the query is invalidated and the newly-Approved OKR won't appear anymore.
   const { data: submittedOKRs, isLoading: okrsLoading } = useListOKRs(
     selectedYear !== "all" ? selectedYear : undefined,
-    "Submitted",
+    "SUBMITTED",
   );
 
   // Collect the current user's active role assignment IDs from their profile.

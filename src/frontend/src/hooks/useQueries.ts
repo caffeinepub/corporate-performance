@@ -20,7 +20,9 @@ import type {
   Variant_Open_Closed,
   Variant_People_Tools_Process,
 } from "../backend.d";
+import { getExtendedActor } from "../utils/backendExtended";
 import { useActor } from "./useActor";
+import { useInternetIdentity } from "./useInternetIdentity";
 
 // ─── Candid Variant Normalizer ────────────────────────────────────────────────
 // Candid variants are returned as objects like { PresidentDirector: null }.
@@ -588,7 +590,7 @@ export function useCreateKPI() {
 }
 
 export function useUpdateKPI() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -606,9 +608,9 @@ export function useUpdateKPI() {
       kpiPeriod: string;
       kpiWeight: number;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
+      const extActor = await getExtendedActor(identity);
       // updateKPI updates in-place — kpiYearId and organizationNodeId are immutable
-      return (actor as any).updateKPI(
+      return extActor.updateKPI(
         kpiId,
         bscAspectId,
         strategicObjectiveId,
@@ -624,12 +626,12 @@ export function useUpdateKPI() {
 }
 
 export function useDeleteKPI() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (kpiId: string) => {
-      if (!actor) throw new Error("Not authenticated");
-      return (actor as any).deleteKPI(kpiId);
+      const extActor = await getExtendedActor(identity);
+      return extActor.deleteKPI(kpiId);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["kpis"] });

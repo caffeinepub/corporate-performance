@@ -297,6 +297,7 @@ export interface backendInterface {
     createStrategicObjective(bscAspectId: BSCAspectId, objectiveName: string): Promise<StrategicObjectiveId>;
     deactivateRegistrationCode(code: string): Promise<void>;
     deactivateRoleAssignment(assignmentId: RoleAssignmentId): Promise<void>;
+    deleteKPI(kpiId: KPIId): Promise<void>;
     deleteOKR(okrId: OKRId): Promise<void>;
     generateRegistrationCode(): Promise<RegistrationCode>;
     getAuditLogs(entityType: string | null, entityId: string | null): Promise<Array<AuditLog>>;
@@ -325,6 +326,7 @@ export interface backendInterface {
     submitKPI(kpiId: KPIId): Promise<void>;
     submitOKR(okrId: OKRId): Promise<void>;
     updateBSCAspect(aspectId: BSCAspectId, aspectName: string): Promise<void>;
+    updateKPI(kpiId: KPIId, bscAspectId: string, strategicObjectiveId: string, kpiMeasurement: string, kpiPeriod: string, kpiWeight: number): Promise<void>;
     updateKPIProgress(kpiId: KPIId, periodIndex: bigint, achievement: number): Promise<void>;
     updateOKR(okrId: OKRId, okrAspect: string, objective: string, keyResult: string, targetValue: number, initialTargetDate: string, revisedTargetDate: string | null): Promise<void>;
     updateOKRProgress(okrId: OKRId, realization: string, notes: string | null): Promise<void>;
@@ -528,6 +530,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deactivateRoleAssignment(arg0);
+            return result;
+        }
+    }
+    async deleteKPI(arg0: KPIId): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteKPI(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteKPI(arg0);
             return result;
         }
     }
@@ -920,6 +936,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateBSCAspect(arg0, arg1);
+            return result;
+        }
+    }
+    async updateKPI(arg0: KPIId, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateKPI(arg0, arg1, arg2, arg3, arg4, arg5);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateKPI(arg0, arg1, arg2, arg3, arg4, arg5);
             return result;
         }
     }

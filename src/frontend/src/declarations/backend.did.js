@@ -227,6 +227,7 @@ export const idlService = IDL.Service({
     ),
   'deactivateRegistrationCode' : IDL.Func([IDL.Text], [], []),
   'deactivateRoleAssignment' : IDL.Func([RoleAssignmentId], [], []),
+  'deleteKPI' : IDL.Func([KPIId], [], []),
   'deleteOKR' : IDL.Func([OKRId], [], []),
   'generateRegistrationCode' : IDL.Func([], [RegistrationCode], []),
   'getAuditLogs' : IDL.Func(
@@ -287,6 +288,11 @@ export const idlService = IDL.Service({
   'submitKPI' : IDL.Func([KPIId], [], []),
   'submitOKR' : IDL.Func([OKRId], [], []),
   'updateBSCAspect' : IDL.Func([BSCAspectId, IDL.Text], [], []),
+  'updateKPI' : IDL.Func(
+      [KPIId, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Float64],
+      [],
+      [],
+    ),
   'updateKPIProgress' : IDL.Func([KPIId, IDL.Nat, IDL.Float64], [], []),
   'updateOKR' : IDL.Func(
       [
@@ -541,6 +547,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'deactivateRegistrationCode' : IDL.Func([IDL.Text], [], []),
     'deactivateRoleAssignment' : IDL.Func([RoleAssignmentId], [], []),
+    'deleteKPI' : IDL.Func([KPIId], [], []),
     'deleteOKR' : IDL.Func([OKRId], [], []),
     'generateRegistrationCode' : IDL.Func([], [RegistrationCode], []),
     'getAuditLogs' : IDL.Func(
@@ -601,6 +608,11 @@ export const idlFactory = ({ IDL }) => {
     'submitKPI' : IDL.Func([KPIId], [], []),
     'submitOKR' : IDL.Func([OKRId], [], []),
     'updateBSCAspect' : IDL.Func([BSCAspectId, IDL.Text], [], []),
+    'updateKPI' : IDL.Func(
+        [KPIId, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Float64],
+        [],
+        [],
+      ),
     'updateKPIProgress' : IDL.Func([KPIId, IDL.Nat, IDL.Float64], [], []),
     'updateOKR' : IDL.Func(
         [

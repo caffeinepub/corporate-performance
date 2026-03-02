@@ -1,0 +1,266 @@
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type UserProfile = record {name: text;};
+type UserId = text;
+type User = 
+ record {
+   companyId: CompanyId;
+   createdAt: int;
+   createdBy: principal;
+   emailAddress: opt text;
+   fullName: text;
+   principalId: principal;
+   registrationCodeUsed: opt text;
+   status: variant {
+             Active;
+             Inactive;
+             Unassigned;
+           };
+   userId: UserId;
+ };
+type StrategicObjectiveId = text;
+type StrategicObjective = 
+ record {
+   bscAspectId: BSCAspectId;
+   companyId: CompanyId;
+   createdAt: int;
+   createdBy: principal;
+   objectiveId: StrategicObjectiveId;
+   objectiveName: text;
+ };
+type RoleAssignmentId = text;
+type RoleAssignment = 
+ record {
+   activeStatus: bool;
+   assignedAt: int;
+   assignedBy: principal;
+   assignmentId: RoleAssignmentId;
+   companyId: CompanyId;
+   grandParentId: opt text;
+   orgNodeId: opt OrgNodeId;
+   parentId: opt text;
+   roleType:
+    variant {
+      CompanyAdmin;
+      DepartmentHead;
+      Director;
+      DivisionHead;
+      PresidentDirector;
+    };
+   ultimateParentId: opt text;
+   userId: UserId;
+ };
+type RegistrationCodeRecord = 
+ record {
+   code: text;
+   companyId: text;
+   createdAt: int;
+   createdBy: principal;
+   isActive: bool;
+ };
+type RegistrationCode = text;
+type OrgNodeId = text;
+type OrgNode = 
+ record {
+   companyId: CompanyId;
+   createdAt: int;
+   createdBy: principal;
+   nodeId: OrgNodeId;
+   nodeName: text;
+   nodeType: variant {
+               Department;
+               Director;
+               Division;
+               PresidentDirector;
+             };
+   parentNodeId: opt OrgNodeId;
+   updatedAt: int;
+   updatedBy: principal;
+ };
+type OKRId = text;
+type OKR = 
+ record {
+   approver1RoleAssignmentId: opt text;
+   approver2RoleAssignmentId: opt text;
+   companyId: CompanyId;
+   createdAt: int;
+   createdBy: principal;
+   initialTargetDate: text;
+   keyResult: text;
+   kpiYearId: KPIYearId;
+   notes: opt text;
+   objective: text;
+   okrAspect: variant {
+                People;
+                Process;
+                Tools;
+              };
+   okrId: OKRId;
+   okrStatus: variant {
+                Approved;
+                Draft;
+                Rejected;
+                Revised;
+                Submitted;
+              };
+   ownerRoleAssignmentId: text;
+   realization: variant {
+                  Backlog;
+                  CarriedForNextYear;
+                  Done;
+                  OnProgress;
+                  Pending;
+                };
+   revisedTargetDate: opt text;
+   targetValue: float64;
+ };
+type MyProfile = 
+ record {
+   companyId: CompanyId;
+   fullName: text;
+   principalId: principal;
+   roles: vec RoleAssignment;
+   status: variant {
+             Active;
+             Inactive;
+             Unassigned;
+           };
+   userId: UserId;
+ };
+type KPIYearId = text;
+type KPIYear = 
+ record {
+   companyId: CompanyId;
+   createdAt: int;
+   createdBy: principal;
+   kpiYearId: KPIYearId;
+   status: variant {
+             Closed;
+             Open;
+           };
+   year: int;
+ };
+type KPIId = text;
+type KPI = 
+ record {
+   approverUserId: opt text;
+   bscAspectId: text;
+   companyId: CompanyId;
+   createdAt: int;
+   createdBy: principal;
+   kpiId: KPIId;
+   kpiMeasurement: text;
+   kpiPeriod: variant {
+                Annual;
+                Monthly;
+                OneTime;
+                Quarterly;
+                SemiAnnual;
+              };
+   kpiStatus: variant {
+                Approved;
+                Draft;
+                Revised;
+                Submitted;
+              };
+   kpiWeight: float64;
+   kpiYearId: text;
+   organizationNodeId: text;
+   ownerRoleAssignmentId: text;
+   revisionNotes: opt text;
+   strategicObjectiveId: text;
+   updatedAt: int;
+   updatedBy: principal;
+ };
+type CompanyId = text;
+type BSCAspectId = text;
+type BSCAspect = 
+ record {
+   aspectId: BSCAspectId;
+   aspectName: text;
+   companyId: CompanyId;
+   createdAt: int;
+   createdBy: principal;
+ };
+type AuditLog = 
+ record {
+   action: text;
+   auditId: AuditId;
+   companyId: CompanyId;
+   entityId: text;
+   entityType: text;
+   performedBy: principal;
+   timestamp: int;
+ };
+type AuditId = text;
+service : {
+  _initializeAccessControlWithSecret: (userSecret: text) -> ();
+  approveKPI: (kpiId: KPIId) -> ();
+  approveOKR: (okrId: OKRId) -> ();
+  assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  assignRole: (userId: UserId, roleType: text, organizationNodeId:
+   opt text) -> ();
+  createBSCAspect: (aspectName: text) -> (BSCAspectId);
+  createCompany: (companyName: text, adminFullName: text, email: opt text) ->
+   (CompanyId);
+  createKPI: (kpiYearId: text, bscAspectId: text, strategicObjectiveId: 
+   text, organizationNodeId: text, kpiMeasurement: text, kpiPeriod: text,
+   kpiWeight: float64) -> (KPIId);
+  createKPIYear: (year: int) -> (KPIYearId);
+  createOKR: (kpiYearId: text, okrAspect: text, objective: text, keyResult:
+   text, targetValue: float64, initialTargetDate: text) -> (OKRId);
+  createOrganizationNode: (nodeType: text, nodeName: text, parentNodeId:
+   opt text) -> (OrgNodeId);
+  createStrategicObjective: (bscAspectId: BSCAspectId, objectiveName:
+   text) -> (StrategicObjectiveId);
+  deactivateRegistrationCode: (code: text) -> ();
+  deactivateRoleAssignment: (assignmentId: RoleAssignmentId) -> ();
+  deleteKPI: (kpiId: KPIId) -> ();
+  deleteOKR: (okrId: OKRId) -> ();
+  generateRegistrationCode: () -> (RegistrationCode);
+  getAuditLogs: (entityType: opt text, entityId: opt text) ->
+   (vec AuditLog) query;
+  getCallerUserProfile: () -> (opt UserProfile) query;
+  getCallerUserRole: () -> (UserRole) query;
+  getKPI: (kpiId: KPIId) -> (opt KPI) query;
+  getMyProfile: () -> (opt MyProfile) query;
+  getOKR: (okrId: OKRId) -> (opt OKR) query;
+  getUserById: (userId: UserId) -> (opt User) query;
+  getUserProfile: (user: principal) -> (opt UserProfile) query;
+  isCallerAdmin: () -> (bool) query;
+  joinCompany: (code: text, fullName: text, email: opt text) -> (CompanyId);
+  listBSCAspects: () -> (vec BSCAspect) query;
+  listKPIYears: () -> (vec KPIYear) query;
+  listKPIs: (kpiYearId: opt text, organizationNodeId: opt text, statusFilter:
+   opt text) -> (vec KPI) query;
+  listOKRs: (kpiYearId: opt text, statusFilter: opt text) -> (vec OKR) query;
+  listOrganizationNodes: () -> (vec OrgNode) query;
+  listRegistrationCodes: () -> (vec RegistrationCodeRecord) query;
+  listRoleAssignments: (userId: opt UserId) -> (vec RoleAssignment) query;
+  listStrategicObjectives: (bscAspectId: opt BSCAspectId) ->
+   (vec StrategicObjective) query;
+  listUsers: () -> (vec User) query;
+  rejectKPI: (kpiId: KPIId, revisionNotes: text) -> ();
+  rejectOKR: (okrId: OKRId, revisionNotes: text) -> ();
+  saveCallerUserProfile: (profile: UserProfile) -> ();
+  setKPIYearStatus: (kpiYearId: KPIYearId, newStatus: text) -> ();
+  submitKPI: (kpiId: KPIId) -> ();
+  submitOKR: (okrId: OKRId) -> ();
+  updateBSCAspect: (aspectId: BSCAspectId, aspectName: text) -> ();
+  updateKPI: (kpiId: KPIId, bscAspectId: text, strategicObjectiveId: 
+   text, kpiMeasurement: text, kpiPeriod: text, kpiWeight: float64) -> ();
+  updateKPIProgress: (kpiId: KPIId, periodIndex: nat, achievement:
+   float64) -> ();
+  updateOKR: (okrId: OKRId, okrAspect: text, objective: text, keyResult:
+   text, targetValue: float64, initialTargetDate: text, revisedTargetDate:
+   opt text) -> ();
+  updateOKRProgress: (okrId: OKRId, realization: text, notes: opt text) -> ();
+  updateOrganizationNode: (nodeId: OrgNodeId, nodeName: text) -> ();
+  updateStrategicObjective: (objectiveId: StrategicObjectiveId,
+   objectiveName: text) -> ();
+  updateUserStatus: (userId: UserId, newStatus: text) -> ();
+}

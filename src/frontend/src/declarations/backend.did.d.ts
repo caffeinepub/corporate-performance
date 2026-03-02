@@ -201,6 +201,7 @@ export interface _SERVICE {
   >,
   'deactivateRegistrationCode' : ActorMethod<[string], undefined>,
   'deactivateRoleAssignment' : ActorMethod<[RoleAssignmentId], undefined>,
+  'deleteKPI' : ActorMethod<[KPIId], undefined>,
   'deleteOKR' : ActorMethod<[OKRId], undefined>,
   'generateRegistrationCode' : ActorMethod<[], RegistrationCode>,
   'getAuditLogs' : ActorMethod<[[] | [string], [] | [string]], Array<AuditLog>>,
@@ -235,6 +236,10 @@ export interface _SERVICE {
   'submitKPI' : ActorMethod<[KPIId], undefined>,
   'submitOKR' : ActorMethod<[OKRId], undefined>,
   'updateBSCAspect' : ActorMethod<[BSCAspectId, string], undefined>,
+  'updateKPI' : ActorMethod<
+    [KPIId, string, string, string, string, number],
+    undefined
+  >,
   'updateKPIProgress' : ActorMethod<[KPIId, bigint, number], undefined>,
   'updateOKR' : ActorMethod<
     [OKRId, string, string, string, number, string, [] | [string]],

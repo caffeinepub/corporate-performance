@@ -214,6 +214,7 @@ export interface backendInterface {
     createStrategicObjective(bscAspectId: BSCAspectId, objectiveName: string): Promise<StrategicObjectiveId>;
     deactivateRegistrationCode(code: string): Promise<void>;
     deactivateRoleAssignment(assignmentId: RoleAssignmentId): Promise<void>;
+    deleteKPI(kpiId: KPIId): Promise<void>;
     deleteOKR(okrId: OKRId): Promise<void>;
     generateRegistrationCode(): Promise<RegistrationCode>;
     getAuditLogs(entityType: string | null, entityId: string | null): Promise<Array<AuditLog>>;
@@ -242,6 +243,7 @@ export interface backendInterface {
     submitKPI(kpiId: KPIId): Promise<void>;
     submitOKR(okrId: OKRId): Promise<void>;
     updateBSCAspect(aspectId: BSCAspectId, aspectName: string): Promise<void>;
+    updateKPI(kpiId: KPIId, bscAspectId: string, strategicObjectiveId: string, kpiMeasurement: string, kpiPeriod: string, kpiWeight: number): Promise<void>;
     updateKPIProgress(kpiId: KPIId, periodIndex: bigint, achievement: number): Promise<void>;
     updateOKR(okrId: OKRId, okrAspect: string, objective: string, keyResult: string, targetValue: number, initialTargetDate: string, revisedTargetDate: string | null): Promise<void>;
     updateOKRProgress(okrId: OKRId, realization: string, notes: string | null): Promise<void>;

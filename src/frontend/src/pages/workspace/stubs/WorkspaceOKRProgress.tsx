@@ -357,7 +357,7 @@ function EmptyState({ yearSelected }: { yearSelected: boolean }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function WorkspaceOKRProgress() {
-  useMyProfile();
+  const { data: profile } = useMyProfile();
   const { data: kpiYears } = useListKPIYears();
 
   // Default to most recent open year
@@ -374,10 +374,28 @@ export default function WorkspaceOKRProgress() {
   // Use default year once loaded
   const effectiveYear = selectedYear || defaultYear;
 
-  const { data: approvedOKRs, isLoading } = useListOKRs(
+  // Fetch all approved OKRs for the selected year (company-wide from backend)
+  const { data: allApprovedOKRs, isLoading } = useListOKRs(
     effectiveYear || undefined,
     "APPROVED",
   );
+
+  // Build set of the current user's active role assignment IDs so we can
+  // filter to only OKRs owned by this user (not all company-wide approved OKRs)
+  const myAssignmentIds = useMemo(() => {
+    if (!profile?.roles) return new Set<string>();
+    return new Set(
+      profile.roles.filter((r) => r.activeStatus).map((r) => r.assignmentId),
+    );
+  }, [profile]);
+
+  // Client-side ownership filter — only show OKRs where this user is the owner
+  const approvedOKRs = useMemo(() => {
+    if (!allApprovedOKRs) return [];
+    return allApprovedOKRs.filter((o) =>
+      myAssignmentIds.has(o.ownerRoleAssignmentId),
+    );
+  }, [allApprovedOKRs, myAssignmentIds]);
 
   const selectedYearObj = useMemo(
     () => (kpiYears ?? []).find((y) => y.kpiYearId === effectiveYear),
