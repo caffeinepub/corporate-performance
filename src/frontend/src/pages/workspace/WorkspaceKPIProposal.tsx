@@ -41,10 +41,15 @@ import {
   useListOrganizationNodes,
   useListStrategicObjectives,
   useMyProfile,
+  useSaveKPITargets,
   useSubmitKPI,
   useUpdateKPI,
   useUpdateKPIProgress,
 } from "@/hooks/useQueries";
+import {
+  getKPIScoreParameter,
+  getKPITargetsLocal,
+} from "@/utils/backendExtended";
 import {
   AlertTriangle,
   BarChart2,
@@ -388,6 +393,7 @@ function KPIForm({
   const { data: orgNodes } = useListOrganizationNodes();
   const createKPI = useCreateKPI();
   const updateKPI = useUpdateKPI();
+  const saveTargets = useSaveKPITargets();
 
   const openYears = useMemo(
     () => (kpiYears ?? []).filter((y) => y.status === Variant_Open_Closed.Open),
@@ -419,13 +425,30 @@ function KPIForm({
   const [kpiWeight, setKpiWeight] = useState<string>(
     editingKPI ? String(editingKPI.kpiWeight) : "",
   );
-  const [targets, setTargets] = useState<string[]>(
-    Array(
-      getPeriodCount(
-        kpiPeriod as Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual,
-      ),
-    ).fill(""),
+  const [kpiScoreParameter, setKpiScoreParameter] = useState<string>(
+    editingKPI ? getKPIScoreParameter(editingKPI.kpiId) : "",
   );
+  const [targets, setTargets] = useState<string[]>(() => {
+    const count = getPeriodCount(
+      (editingKPI?.kpiPeriod ??
+        "Monthly") as Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual,
+    );
+    // Pre-populate targets from localStorage if editing
+    if (editingKPI) {
+      const savedTargets = getKPITargetsLocal(editingKPI.kpiId);
+      if (savedTargets.length > 0) {
+        const filled = Array(count).fill("");
+        for (const t of savedTargets) {
+          const idx = t.periodIndex - 1;
+          if (idx >= 0 && idx < count) {
+            filled[idx] = String(t.targetValue);
+          }
+        }
+        return filled;
+      }
+    }
+    return Array(count).fill("");
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Filtered objectives by selected aspect
@@ -493,6 +516,7 @@ function KPIForm({
   const handleSaveDraft = async () => {
     if (!validate()) return;
     try {
+      const parsedTargets = numericTargets.filter((t) => !Number.isNaN(t));
       if (editingKPI) {
         await updateKPI.mutateAsync({
           kpiId: editingKPI.kpiId,
@@ -501,10 +525,16 @@ function KPIForm({
           kpiMeasurement: kpiMeasurement.trim(),
           kpiPeriod,
           kpiWeight: Number.parseFloat(kpiWeight),
+          kpiScoreParameter: kpiScoreParameter.trim(),
+        });
+        // Save targets to localStorage
+        await saveTargets.mutateAsync({
+          kpiId: editingKPI.kpiId,
+          targets: parsedTargets,
         });
         toast.success("KPI updated");
       } else {
-        await createKPI.mutateAsync({
+        const newKpiId = await createKPI.mutateAsync({
           kpiYearId,
           bscAspectId,
           strategicObjectiveId,
@@ -512,7 +542,15 @@ function KPIForm({
           kpiMeasurement: kpiMeasurement.trim(),
           kpiPeriod,
           kpiWeight: Number.parseFloat(kpiWeight),
+          kpiScoreParameter: kpiScoreParameter.trim(),
         });
+        // Save targets for the newly created KPI
+        if (newKpiId) {
+          await saveTargets.mutateAsync({
+            kpiId: newKpiId,
+            targets: parsedTargets,
+          });
+        }
         toast.success("KPI saved as draft");
       }
       onClose();
@@ -523,10 +561,12 @@ function KPIForm({
 
   const handleClose = () => {
     setErrors({});
+    setKpiScoreParameter("");
     onClose();
   };
 
-  const isPending = createKPI.isPending || updateKPI.isPending;
+  const isPending =
+    createKPI.isPending || updateKPI.isPending || saveTargets.isPending;
 
   const isAggregation =
     kpiPeriod !== "OneTime"
@@ -707,6 +747,35 @@ function KPIForm({
                 {errors.kpiMeasurement}
               </p>
             )}
+          </div>
+
+          {/* KPI Score Parameter */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="kpi-score-param-input"
+              className="text-sm font-medium"
+            >
+              KPI Score Parameter{" "}
+              <span className="text-xs font-normal text-muted-foreground">
+                (Optional)
+              </span>
+            </Label>
+            <Input
+              id="kpi-score-param-input"
+              type="text"
+              placeholder="e.g. 0=No progress, 3=On track, 5=Exceeded target by >20%"
+              value={kpiScoreParameter}
+              onChange={(e) =>
+                setKpiScoreParameter(
+                  e.target.value.replace(/[^a-zA-Z0-9\s.,;:()\-\/]/g, ""),
+                )
+              }
+              maxLength={500}
+            />
+            <p className="text-xs text-muted-foreground">
+              Alphanumeric text describing how to rate progress on a 0–5 scale.
+              Helps the approver understand your scoring criteria.
+            </p>
           </div>
 
           {/* Row 3: Period Type + KPI Weight */}
@@ -901,6 +970,7 @@ function ProgressPanel({ kpi, aspectName, onClose }: ProgressPanelProps) {
         kpiId: kpi.kpiId,
         periodIndex: index + 1,
         achievement: val,
+        score: 0,
       });
       toast.success(`Period ${labels[index] ?? String(index + 1)} updated`);
     } catch (err) {
@@ -1050,6 +1120,26 @@ function ViewPanel({
               </span>
             </div>
           ))}
+          {(() => {
+            const scoreParam = getKPIScoreParameter(kpi.kpiId);
+            if (!scoreParam) return null;
+            return (
+              <div className="py-2 border-b border-border">
+                <span className="text-sm text-muted-foreground block mb-1">
+                  Score Parameter
+                </span>
+                <span
+                  className="text-xs font-medium px-3 py-2 rounded-lg block leading-relaxed"
+                  style={{
+                    background: "oklch(0.94 0.012 252)",
+                    color: "oklch(0.38 0.065 258)",
+                  }}
+                >
+                  {scoreParam}
+                </span>
+              </div>
+            );
+          })()}
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-muted-foreground">Status</span>
             <span
@@ -1076,7 +1166,8 @@ function ViewPanel({
 interface SubmitConfirmDialogProps {
   open: boolean;
   yearLabel: string;
-  kpiCount: number;
+  pendingCount: number;
+  approvedCount: number;
   totalWeight: number;
   weightByNode: Map<string, number>;
   orgNodeMap: Map<string, string>;
@@ -1088,7 +1179,8 @@ interface SubmitConfirmDialogProps {
 function SubmitConfirmDialog({
   open,
   yearLabel,
-  kpiCount,
+  pendingCount,
+  approvedCount,
   totalWeight,
   weightByNode,
   orgNodeMap,
@@ -1115,10 +1207,10 @@ function SubmitConfirmDialog({
             </div>
             <div>
               <DialogTitle className="font-display text-base">
-                Submit All KPIs
+                Submit KPIs for Review
               </DialogTitle>
               <DialogDescription className="text-xs mt-0.5">
-                This action cannot be undone without admin revision
+                This action cannot be undone without approver revision
               </DialogDescription>
             </div>
           </div>
@@ -1129,18 +1221,32 @@ function SubmitConfirmDialog({
           style={{ background: "oklch(0.97 0.008 252)" }}
         >
           <p className="text-foreground leading-relaxed">
-            You are about to submit all KPIs for year{" "}
-            <strong>{yearLabel}</strong>.
+            You are about to submit{" "}
+            <strong>
+              {pendingCount} KPI{pendingCount !== 1 ? "s" : ""}
+            </strong>{" "}
+            pending review for year <strong>{yearLabel}</strong>.
           </p>
+          {approvedCount > 0 && (
+            <p
+              className="text-xs leading-relaxed"
+              style={{ color: "oklch(0.38 0.12 145)" }}
+            >
+              ✓ {approvedCount} already-approved KPI
+              {approvedCount !== 1 ? "s" : ""} will not be affected.
+            </p>
+          )}
           <div className="flex items-center justify-between pt-2 border-t border-border">
-            <span className="text-muted-foreground">KPI Count</span>
-            <span className="font-semibold">{kpiCount}</span>
+            <span className="text-muted-foreground">Submitting</span>
+            <span className="font-semibold">
+              {pendingCount} KPI{pendingCount !== 1 ? "s" : ""}
+            </span>
           </div>
           {isMultiNode ? (
             <>
               <div className="pt-1 pb-0.5">
                 <span className="text-xs text-muted-foreground font-medium">
-                  Weight per role:
+                  Total weight per role:
                 </span>
               </div>
               {nodeEntries.map(([nodeId, w]) => (
@@ -1174,8 +1280,8 @@ function SubmitConfirmDialog({
         </div>
 
         <p className="text-xs text-muted-foreground leading-relaxed">
-          After submission, KPIs cannot be edited unless rejected by an
-          approver.
+          After submission, KPIs cannot be edited unless sent back for revision
+          by an approver.
         </p>
 
         <DialogFooter className="gap-2 sm:gap-2">
@@ -1767,19 +1873,36 @@ export default function WorkspaceKPIProposal() {
         : undefined,
     [selectedYear, openYears],
   );
-  const allDraftOrRevised =
-    kpiCount > 0 &&
-    myKPIs.every(
-      (k) =>
-        k.kpiStatus === Variant_Approved_Draft_Submitted_Revised.Draft ||
-        k.kpiStatus === Variant_Approved_Draft_Submitted_Revised.Revised,
-    );
-  // Fix 2: every node group must have exactly 100% weight
+
+  // KPIs that are eligible for (re-)submission: DRAFT or REVISED only
+  const kpisToSubmit = useMemo(
+    () =>
+      myKPIs.filter(
+        (k) =>
+          k.kpiStatus === Variant_Approved_Draft_Submitted_Revised.Draft ||
+          k.kpiStatus === Variant_Approved_Draft_Submitted_Revised.Revised,
+      ),
+    [myKPIs],
+  );
+
+  // There must be at least 1 pending KPI, and NONE can be in SUBMITTED (under-review) state
+  const hasPendingKPIs = kpisToSubmit.length > 0;
+  const hasUnderReviewKPIs = myKPIs.some(
+    (k) => k.kpiStatus === Variant_Approved_Draft_Submitted_Revised.Submitted,
+  );
+
+  // Every org node (across all KPIs incl. already-approved) must total exactly 100%
+  // This ensures the full picture is correct before allowing partial resubmission
   const weightExact =
     weightByNode.size > 0 &&
     Array.from(weightByNode.values()).every((w) => Math.abs(w - 100) < 0.01);
+
   const canSubmit =
-    allDraftOrRevised && !!selectedOpenYear && weightExact && kpiCount > 0;
+    hasPendingKPIs &&
+    !hasUnderReviewKPIs &&
+    !!selectedOpenYear &&
+    weightExact &&
+    kpiCount > 0;
 
   // Form / dialog state
   const [showForm, setShowForm] = useState(false);
@@ -1895,7 +2018,9 @@ export default function WorkspaceKPIProposal() {
                       }
                     >
                       <Send className="w-4 h-4" />
-                      Submit All KPIs for Year
+                      {kpisToSubmit.length > 0 && kpisToSubmit.length < kpiCount
+                        ? `Submit ${kpisToSubmit.length} KPI${kpisToSubmit.length !== 1 ? "s" : ""} for Review`
+                        : "Submit All KPIs for Year"}
                     </Button>
                   </span>
                 </TooltipTrigger>
@@ -1903,13 +2028,17 @@ export default function WorkspaceKPIProposal() {
                   <TooltipContent side="bottom" className="max-w-xs text-xs">
                     {kpiCount === 0
                       ? "No KPIs to submit"
-                      : !selectedOpenYear
-                        ? "Select an open KPI Year from filters"
-                        : !allDraftOrRevised
-                          ? "All KPIs must be in Draft or Revised status"
-                          : weightByNode.size > 1
-                            ? "Each organization role must have exactly 100% weight"
-                            : `Total weight must equal exactly 100% (current: ${totalWeight.toFixed(1)}%)`}
+                      : !hasPendingKPIs
+                        ? "No KPIs in Draft or Revised status to submit"
+                        : hasUnderReviewKPIs
+                          ? "Some KPIs are already submitted and under review — wait for approval before resubmitting"
+                          : !selectedOpenYear
+                            ? "Select an open KPI Year from filters"
+                            : !weightExact
+                              ? weightByNode.size > 1
+                                ? "Each organization role must have exactly 100% total weight"
+                                : `Total weight must equal exactly 100% (current: ${totalWeight.toFixed(1)}%)`
+                              : "Cannot submit"}
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -2140,7 +2269,13 @@ export default function WorkspaceKPIProposal() {
       <SubmitConfirmDialog
         open={showSubmitConfirm}
         yearLabel={selectedYearLabel}
-        kpiCount={kpiCount}
+        pendingCount={kpisToSubmit.length}
+        approvedCount={
+          myKPIs.filter(
+            (k) =>
+              k.kpiStatus === Variant_Approved_Draft_Submitted_Revised.Approved,
+          ).length
+        }
         totalWeight={totalWeight}
         weightByNode={weightByNode}
         orgNodeMap={orgNodeMap}

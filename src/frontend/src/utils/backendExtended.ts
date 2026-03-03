@@ -7,6 +7,9 @@
  *
  * Uses @dfinity/agent + @dfinity/candid to create a minimal supplementary
  * actor that communicates directly with the deployed canister.
+ *
+ * Also provides localStorage-based utilities for data that is managed
+ * client-side (kpiScoreParameter, kpiTargets, kpiProgress+score).
  */
 
 import { Actor, HttpAgent } from "@dfinity/agent";
@@ -50,7 +53,7 @@ async function loadBackendConfig(): Promise<{
   return _cachedConfig;
 }
 
-// ─── Minimal IDL for missing methods ─────────────────────────────────────────
+// ─── Minimal IDL for missing/updated methods ──────────────────────────────────
 
 function extendedIdlFactory({
   IDL: IdlParam,
@@ -58,6 +61,7 @@ function extendedIdlFactory({
   IDL: typeof IDL;
 }): IDL.ServiceClass {
   const KPIId = IdlParam.Text;
+
   return IdlParam.Service({
     deleteKPI: IdlParam.Func([KPIId], [], []),
     updateKPI: IdlParam.Func(
@@ -72,10 +76,16 @@ function extendedIdlFactory({
       [],
       [],
     ),
+    // updateKPIProgress: 3 params as backend defines — (kpiId, periodIndex, achievement)
+    updateKPIProgress: IdlParam.Func(
+      [KPIId, IdlParam.Nat, IdlParam.Float64],
+      [],
+      [],
+    ),
   });
 }
 
-// ─── Actor types ──────────────────────────────────────────────────────────────
+// ─── Extended Actor Types ─────────────────────────────────────────────────────
 
 export interface ExtendedActor {
   deleteKPI: (kpiId: string) => Promise<void>;
@@ -87,12 +97,154 @@ export interface ExtendedActor {
     kpiPeriod: string,
     kpiWeight: number,
   ) => Promise<void>;
+  updateKPIProgress: (
+    kpiId: string,
+    periodIndex: bigint,
+    achievement: number,
+  ) => Promise<void>;
+}
+
+// ─── KPI Progress Data Types (localStorage-backed) ───────────────────────────
+
+export interface KPITargetRecord {
+  targetId: string;
+  kpiId: string;
+  periodIndex: bigint;
+  targetValue: number;
+}
+
+export interface KPIProgressRecord {
+  progressId: string;
+  kpiId: string;
+  periodIndex: bigint;
+  achievement: number;
+  score: number;
+  updatedAt: bigint;
+  updatedBy: unknown;
+}
+
+export interface KPIProgressData {
+  targets: KPITargetRecord[];
+  progress: KPIProgressRecord[];
+}
+
+// ─── localStorage: KPI Score Parameter ───────────────────────────────────────
+
+export function saveKPIScoreParameter(kpiId: string, value: string): void {
+  try {
+    localStorage.setItem(`kpi_score_param_${kpiId}`, value);
+  } catch {
+    // localStorage may be unavailable in some contexts
+  }
+}
+
+export function getKPIScoreParameter(kpiId: string): string {
+  try {
+    return localStorage.getItem(`kpi_score_param_${kpiId}`) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function deleteKPIScoreParameter(kpiId: string): void {
+  try {
+    localStorage.removeItem(`kpi_score_param_${kpiId}`);
+  } catch {
+    // noop
+  }
+}
+
+// ─── localStorage: KPI Targets ────────────────────────────────────────────────
+
+export interface LocalKPITarget {
+  periodIndex: number;
+  targetValue: number;
+}
+
+export function saveKPITargetsLocal(
+  kpiId: string,
+  targets: LocalKPITarget[],
+): void {
+  try {
+    localStorage.setItem(`kpi_targets_${kpiId}`, JSON.stringify(targets));
+  } catch {
+    // noop
+  }
+}
+
+export function getKPITargetsLocal(kpiId: string): LocalKPITarget[] {
+  try {
+    const raw = localStorage.getItem(`kpi_targets_${kpiId}`);
+    if (!raw) return [];
+    return JSON.parse(raw) as LocalKPITarget[];
+  } catch {
+    return [];
+  }
+}
+
+export function deleteKPITargetsLocal(kpiId: string): void {
+  try {
+    localStorage.removeItem(`kpi_targets_${kpiId}`);
+  } catch {
+    // noop
+  }
+}
+
+// ─── localStorage: KPI Progress (with score) ─────────────────────────────────
+
+export interface LocalKPIProgress {
+  periodIndex: number;
+  achievement: number;
+  score: number;
+  updatedAt: number; // Date.now() timestamp
+}
+
+export function saveKPIProgressLocal(
+  kpiId: string,
+  periodIndex: number,
+  achievement: number,
+  score: number,
+): void {
+  try {
+    const existing = getKPIProgressLocalRaw(kpiId);
+    const filtered = existing.filter((p) => p.periodIndex !== periodIndex);
+    filtered.push({ periodIndex, achievement, score, updatedAt: Date.now() });
+    localStorage.setItem(`kpi_progress_${kpiId}`, JSON.stringify(filtered));
+  } catch {
+    // noop
+  }
+}
+
+function getKPIProgressLocalRaw(kpiId: string): LocalKPIProgress[] {
+  try {
+    const raw = localStorage.getItem(`kpi_progress_${kpiId}`);
+    if (!raw) return [];
+    return JSON.parse(raw) as LocalKPIProgress[];
+  } catch {
+    return [];
+  }
+}
+
+export function getKPIProgressLocal(kpiId: string): LocalKPIProgress[] {
+  return getKPIProgressLocalRaw(kpiId);
+}
+
+export function deleteKPIProgressLocal(kpiId: string): void {
+  try {
+    localStorage.removeItem(`kpi_progress_${kpiId}`);
+  } catch {
+    // noop
+  }
 }
 
 // ─── Actor factory ────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _actorCache: { actor: ExtendedActor; identityKey: string } | null = null;
+
+export function clearActorCache(): void {
+  _actorCache = null;
+}
 
 export async function getExtendedActor(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

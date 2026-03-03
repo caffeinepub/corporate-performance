@@ -20,7 +20,20 @@ import type {
   Variant_Open_Closed,
   Variant_People_Tools_Process,
 } from "../backend.d";
-import { getExtendedActor } from "../utils/backendExtended";
+import {
+  type KPIProgressData,
+  type KPIProgressRecord,
+  type KPITargetRecord,
+  deleteKPIProgressLocal,
+  deleteKPIScoreParameter,
+  deleteKPITargetsLocal,
+  getExtendedActor,
+  getKPIProgressLocal,
+  getKPITargetsLocal,
+  saveKPIProgressLocal,
+  saveKPIScoreParameter,
+  saveKPITargetsLocal,
+} from "../utils/backendExtended";
 import { useActor } from "./useActor";
 import { useInternetIdentity } from "./useInternetIdentity";
 
@@ -563,6 +576,7 @@ export function useCreateKPI() {
       kpiMeasurement,
       kpiPeriod,
       kpiWeight,
+      kpiScoreParameter,
     }: {
       kpiYearId: string;
       bscAspectId: string;
@@ -571,9 +585,10 @@ export function useCreateKPI() {
       kpiMeasurement: string;
       kpiPeriod: string;
       kpiWeight: number;
+      kpiScoreParameter?: string;
     }) => {
       if (!actor) throw new Error("Not authenticated");
-      return actor.createKPI(
+      const newKpiId = await actor.createKPI(
         kpiYearId,
         bscAspectId,
         strategicObjectiveId,
@@ -582,6 +597,11 @@ export function useCreateKPI() {
         toBackendPeriod(kpiPeriod),
         kpiWeight,
       );
+      // Store score parameter in localStorage
+      if (kpiScoreParameter !== undefined && newKpiId) {
+        saveKPIScoreParameter(newKpiId, kpiScoreParameter);
+      }
+      return newKpiId;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["kpis"] });
@@ -600,6 +620,7 @@ export function useUpdateKPI() {
       kpiMeasurement,
       kpiPeriod,
       kpiWeight,
+      kpiScoreParameter,
     }: {
       kpiId: string;
       bscAspectId: string;
@@ -607,10 +628,11 @@ export function useUpdateKPI() {
       kpiMeasurement: string;
       kpiPeriod: string;
       kpiWeight: number;
+      kpiScoreParameter?: string;
     }) => {
       const extActor = await getExtendedActor(identity);
       // updateKPI updates in-place — kpiYearId and organizationNodeId are immutable
-      return extActor.updateKPI(
+      await extActor.updateKPI(
         kpiId,
         bscAspectId,
         strategicObjectiveId,
@@ -618,6 +640,10 @@ export function useUpdateKPI() {
         toBackendPeriod(kpiPeriod),
         kpiWeight,
       );
+      // Store score parameter in localStorage
+      if (kpiScoreParameter !== undefined) {
+        saveKPIScoreParameter(kpiId, kpiScoreParameter);
+      }
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["kpis"] });
@@ -631,7 +657,11 @@ export function useDeleteKPI() {
   return useMutation({
     mutationFn: async (kpiId: string) => {
       const extActor = await getExtendedActor(identity);
-      return extActor.deleteKPI(kpiId);
+      await extActor.deleteKPI(kpiId);
+      // Clean up localStorage entries for this KPI
+      deleteKPIScoreParameter(kpiId);
+      deleteKPITargetsLocal(kpiId);
+      deleteKPIProgressLocal(kpiId);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["kpis"] });
@@ -654,24 +684,85 @@ export function useSubmitKPI() {
 }
 
 export function useUpdateKPIProgress() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       kpiId,
       periodIndex,
       achievement,
+      score,
     }: {
       kpiId: string;
       periodIndex: number;
       achievement: number;
+      score: number;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.updateKPIProgress(kpiId, BigInt(periodIndex), achievement);
+      // Call backend with the 3-param signature (no score param in backend)
+      const extActor = await getExtendedActor(identity);
+      await extActor.updateKPIProgress(kpiId, BigInt(periodIndex), achievement);
+      // Also store achievement + score locally so the progress view can show both
+      saveKPIProgressLocal(kpiId, periodIndex, achievement, score);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["kpis"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["kpiProgressData", variables.kpiId],
+      });
     },
+  });
+}
+
+export function useSaveKPITargets() {
+  return useMutation({
+    mutationFn: async ({
+      kpiId,
+      targets,
+    }: {
+      kpiId: string;
+      targets: number[];
+    }) => {
+      // Store targets in localStorage — backend has no saveKPITargets endpoint
+      saveKPITargetsLocal(
+        kpiId,
+        targets.map((v, i) => ({ periodIndex: i + 1, targetValue: v })),
+      );
+    },
+  });
+}
+
+export function useGetKPIProgressData(kpiId: string) {
+  return useQuery<KPIProgressData>({
+    queryKey: ["kpiProgressData", kpiId],
+    queryFn: (): KPIProgressData => {
+      if (!kpiId) return { targets: [], progress: [] };
+
+      // Read targets from localStorage and map to KPITargetRecord shape
+      const localTargets = getKPITargetsLocal(kpiId);
+      const targets: KPITargetRecord[] = localTargets.map((t, i) => ({
+        targetId: `${kpiId}_target_${i}`,
+        kpiId,
+        periodIndex: BigInt(t.periodIndex),
+        targetValue: t.targetValue,
+      }));
+
+      // Read progress from localStorage and map to KPIProgressRecord shape
+      const localProgress = getKPIProgressLocal(kpiId);
+      const progress: KPIProgressRecord[] = localProgress.map((p, i) => ({
+        progressId: `${kpiId}_progress_${i}`,
+        kpiId,
+        periodIndex: BigInt(p.periodIndex),
+        achievement: p.achievement,
+        score: p.score,
+        updatedAt: BigInt(p.updatedAt * 1_000_000), // ms to nanoseconds
+        updatedBy: null,
+      }));
+
+      return { targets, progress };
+    },
+    enabled: !!kpiId,
+    // staleTime 0 so it always reads fresh from localStorage after mutations
+    staleTime: 0,
   });
 }
 
