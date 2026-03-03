@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import type {
   BSCAspect,
   KPI,
@@ -24,18 +25,16 @@ import {
   type KPIProgressData,
   type KPIProgressRecord,
   type KPITargetRecord,
-  deleteKPIProgressLocal,
-  deleteKPIScoreParameter,
-  deleteKPITargetsLocal,
+  clearActorCache,
+  fromOptText,
   getExtendedActor,
-  getKPIProgressLocal,
-  getKPITargetsLocal,
-  saveKPIProgressLocal,
-  saveKPIScoreParameter,
-  saveKPITargetsLocal,
+  toOptText,
 } from "../utils/backendExtended";
 import { useActor } from "./useActor";
 import { useInternetIdentity } from "./useInternetIdentity";
+
+// Re-export types so existing imports keep working
+export type { KPIProgressData, KPIProgressRecord, KPITargetRecord };
 
 // ─── Candid Variant Normalizer ────────────────────────────────────────────────
 // Candid variants are returned as objects like { PresidentDirector: null }.
@@ -565,7 +564,7 @@ export function useListKPIs(
 }
 
 export function useCreateKPI() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -587,21 +586,17 @@ export function useCreateKPI() {
       kpiWeight: number;
       kpiScoreParameter?: string;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
-      const newKpiId = await actor.createKPI(
+      const extActor = await getExtendedActor(identity);
+      return extActor.createKPI(
         kpiYearId,
         bscAspectId,
         strategicObjectiveId,
         organizationNodeId,
         kpiMeasurement,
+        toOptText(kpiScoreParameter),
         toBackendPeriod(kpiPeriod),
         kpiWeight,
       );
-      // Store score parameter in localStorage
-      if (kpiScoreParameter !== undefined && newKpiId) {
-        saveKPIScoreParameter(newKpiId, kpiScoreParameter);
-      }
-      return newKpiId;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["kpis"] });
@@ -631,19 +626,15 @@ export function useUpdateKPI() {
       kpiScoreParameter?: string;
     }) => {
       const extActor = await getExtendedActor(identity);
-      // updateKPI updates in-place — kpiYearId and organizationNodeId are immutable
       await extActor.updateKPI(
         kpiId,
         bscAspectId,
         strategicObjectiveId,
         kpiMeasurement,
+        toOptText(kpiScoreParameter),
         toBackendPeriod(kpiPeriod),
         kpiWeight,
       );
-      // Store score parameter in localStorage
-      if (kpiScoreParameter !== undefined) {
-        saveKPIScoreParameter(kpiId, kpiScoreParameter);
-      }
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["kpis"] });
@@ -658,10 +649,6 @@ export function useDeleteKPI() {
     mutationFn: async (kpiId: string) => {
       const extActor = await getExtendedActor(identity);
       await extActor.deleteKPI(kpiId);
-      // Clean up localStorage entries for this KPI
-      deleteKPIScoreParameter(kpiId);
-      deleteKPITargetsLocal(kpiId);
-      deleteKPIProgressLocal(kpiId);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["kpis"] });
@@ -683,6 +670,67 @@ export function useSubmitKPI() {
   });
 }
 
+// ─── KPI Score Parameter (stored separately in backend) ───────────────────────
+
+export function useGetKPIScoreParameter(kpiId: string) {
+  const { identity } = useInternetIdentity();
+  return useQuery<string>({
+    queryKey: ["kpiScoreParameter", kpiId],
+    queryFn: async () => {
+      if (!kpiId) return "";
+      const extActor = await getExtendedActor(identity);
+      const result = await extActor.getKPIScoreParameter(kpiId);
+      return result[0] ?? "";
+    },
+    enabled: !!kpiId && !!identity,
+    staleTime: 60_000,
+  });
+}
+
+// ─── KPI Targets (backend-stored) ─────────────────────────────────────────────
+
+export function useSaveKPITargets() {
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      kpiId,
+      targets,
+    }: {
+      kpiId: string;
+      targets: number[];
+    }) => {
+      const extActor = await getExtendedActor(identity);
+      // targets is an array of values ordered by periodIndex (1-based)
+      const tuples: Array<[bigint, number]> = targets.map(
+        (v, i) => [BigInt(i + 1), v] as [bigint, number],
+      );
+      await extActor.saveKPITargets(kpiId, tuples);
+    },
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["kpiTargets", variables.kpiId],
+      });
+    },
+  });
+}
+
+export function useGetKPITargets(kpiId: string) {
+  const { identity } = useInternetIdentity();
+  return useQuery<KPITargetRecord[]>({
+    queryKey: ["kpiTargets", kpiId],
+    queryFn: async () => {
+      if (!kpiId) return [];
+      const extActor = await getExtendedActor(identity);
+      return extActor.getKPITargets(kpiId);
+    },
+    enabled: !!kpiId && !!identity,
+    staleTime: 30_000,
+  });
+}
+
+// ─── KPI Progress (backend-stored) ────────────────────────────────────────────
+
 export function useUpdateKPIProgress() {
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
@@ -698,72 +746,62 @@ export function useUpdateKPIProgress() {
       achievement: number;
       score: number;
     }) => {
-      // Call backend with the 3-param signature (no score param in backend)
       const extActor = await getExtendedActor(identity);
-      await extActor.updateKPIProgress(kpiId, BigInt(periodIndex), achievement);
-      // Also store achievement + score locally so the progress view can show both
-      saveKPIProgressLocal(kpiId, periodIndex, achievement, score);
+      await extActor.updateKPIProgress(
+        kpiId,
+        BigInt(periodIndex),
+        achievement,
+        score,
+      );
     },
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["kpis"] });
       void queryClient.invalidateQueries({
-        queryKey: ["kpiProgressData", variables.kpiId],
+        queryKey: ["kpiProgressList", variables.kpiId],
       });
     },
   });
 }
 
-export function useSaveKPITargets() {
-  return useMutation({
-    mutationFn: async ({
-      kpiId,
-      targets,
-    }: {
-      kpiId: string;
-      targets: number[];
-    }) => {
-      // Store targets in localStorage — backend has no saveKPITargets endpoint
-      saveKPITargetsLocal(
-        kpiId,
-        targets.map((v, i) => ({ periodIndex: i + 1, targetValue: v })),
-      );
+export function useGetKPIProgressList(kpiId: string) {
+  const { identity } = useInternetIdentity();
+  return useQuery<KPIProgressRecord[]>({
+    queryKey: ["kpiProgressList", kpiId],
+    queryFn: async () => {
+      if (!kpiId) return [];
+      const extActor = await getExtendedActor(identity);
+      return extActor.getKPIProgressList(kpiId);
     },
+    enabled: !!kpiId && !!identity,
+    staleTime: 0,
   });
 }
 
+// ─── Combined KPI Progress Data (targets + progress) ─────────────────────────
+
+/**
+ * Returns live-combined targets + progress data for a KPI.
+ * Uses useMemo instead of a derived useQuery so the result updates
+ * reactively whenever either sub-query's data changes, avoiding stale
+ * queryFn-closure issues.
+ */
 export function useGetKPIProgressData(kpiId: string) {
-  return useQuery<KPIProgressData>({
-    queryKey: ["kpiProgressData", kpiId],
-    queryFn: (): KPIProgressData => {
-      if (!kpiId) return { targets: [], progress: [] };
+  const targetsQuery = useGetKPITargets(kpiId);
+  const progressQuery = useGetKPIProgressList(kpiId);
 
-      // Read targets from localStorage and map to KPITargetRecord shape
-      const localTargets = getKPITargetsLocal(kpiId);
-      const targets: KPITargetRecord[] = localTargets.map((t, i) => ({
-        targetId: `${kpiId}_target_${i}`,
-        kpiId,
-        periodIndex: BigInt(t.periodIndex),
-        targetValue: t.targetValue,
-      }));
+  const data = useMemo<KPIProgressData>(
+    () => ({
+      targets: targetsQuery.data ?? [],
+      progress: progressQuery.data ?? [],
+    }),
+    [targetsQuery.data, progressQuery.data],
+  );
 
-      // Read progress from localStorage and map to KPIProgressRecord shape
-      const localProgress = getKPIProgressLocal(kpiId);
-      const progress: KPIProgressRecord[] = localProgress.map((p, i) => ({
-        progressId: `${kpiId}_progress_${i}`,
-        kpiId,
-        periodIndex: BigInt(p.periodIndex),
-        achievement: p.achievement,
-        score: p.score,
-        updatedAt: BigInt(p.updatedAt * 1_000_000), // ms to nanoseconds
-        updatedBy: null,
-      }));
-
-      return { targets, progress };
-    },
-    enabled: !!kpiId,
-    // staleTime 0 so it always reads fresh from localStorage after mutations
-    staleTime: 0,
-  });
+  return {
+    data,
+    isLoading: targetsQuery.isLoading || progressQuery.isLoading,
+    isFetching: targetsQuery.isFetching || progressQuery.isFetching,
+  };
 }
 
 // ─── OKRs ─────────────────────────────────────────────────────────────────────
@@ -988,3 +1026,6 @@ export function useRejectKPI() {
     },
   });
 }
+
+// ─── Clear actor cache on identity change ─────────────────────────────────────
+export { clearActorCache, fromOptText };

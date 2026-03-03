@@ -35,6 +35,8 @@ import {
 import {
   useCreateKPI,
   useDeleteKPI,
+  useGetKPIScoreParameter,
+  useGetKPITargets,
   useListBSCAspects,
   useListKPIYears,
   useListKPIs,
@@ -46,10 +48,6 @@ import {
   useUpdateKPI,
   useUpdateKPIProgress,
 } from "@/hooks/useQueries";
-import {
-  getKPIScoreParameter,
-  getKPITargetsLocal,
-} from "@/utils/backendExtended";
 import {
   AlertTriangle,
   BarChart2,
@@ -68,7 +66,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { KPI } from "../../backend.d";
 import {
@@ -395,6 +393,11 @@ function KPIForm({
   const updateKPI = useUpdateKPI();
   const saveTargets = useSaveKPITargets();
 
+  // Fetch existing targets from backend when editing
+  const { data: existingTargets, isLoading: targetsLoading } = useGetKPITargets(
+    editingKPI?.kpiId ?? "",
+  );
+
   const openYears = useMemo(
     () => (kpiYears ?? []).filter((y) => y.status === Variant_Open_Closed.Open),
     [kpiYears],
@@ -425,30 +428,44 @@ function KPIForm({
   const [kpiWeight, setKpiWeight] = useState<string>(
     editingKPI ? String(editingKPI.kpiWeight) : "",
   );
-  const [kpiScoreParameter, setKpiScoreParameter] = useState<string>(
-    editingKPI ? getKPIScoreParameter(editingKPI.kpiId) : "",
+  // Fetch score parameter from backend when editing
+  const { data: fetchedScoreParam } = useGetKPIScoreParameter(
+    editingKPI?.kpiId ?? "",
   );
+  const [kpiScoreParameter, setKpiScoreParameter] = useState<string>("");
+
+  // Populate score parameter from backend when editing
+  useEffect(() => {
+    if (editingKPI && fetchedScoreParam !== undefined) {
+      setKpiScoreParameter(fetchedScoreParam);
+    }
+  }, [editingKPI, fetchedScoreParam]);
+
   const [targets, setTargets] = useState<string[]>(() => {
     const count = getPeriodCount(
       (editingKPI?.kpiPeriod ??
         "Monthly") as Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual,
     );
-    // Pre-populate targets from localStorage if editing
-    if (editingKPI) {
-      const savedTargets = getKPITargetsLocal(editingKPI.kpiId);
-      if (savedTargets.length > 0) {
-        const filled = Array(count).fill("");
-        for (const t of savedTargets) {
-          const idx = t.periodIndex - 1;
-          if (idx >= 0 && idx < count) {
-            filled[idx] = String(t.targetValue);
-          }
-        }
-        return filled;
-      }
-    }
     return Array(count).fill("");
   });
+
+  // Populate targets from backend when they load (edit mode)
+  useEffect(() => {
+    if (editingKPI && existingTargets && existingTargets.length > 0) {
+      const count = getPeriodCount(
+        editingKPI.kpiPeriod as Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual,
+      );
+      const filled = Array(count).fill("") as string[];
+      for (const t of existingTargets) {
+        const idx = Number(t.periodIndex) - 1;
+        if (idx >= 0 && idx < count) {
+          filled[idx] = String(t.targetValue);
+        }
+      }
+      setTargets(filled);
+    }
+  }, [editingKPI, existingTargets]);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Filtered objectives by selected aspect
@@ -566,7 +583,10 @@ function KPIForm({
   };
 
   const isPending =
-    createKPI.isPending || updateKPI.isPending || saveTargets.isPending;
+    createKPI.isPending ||
+    updateKPI.isPending ||
+    saveTargets.isPending ||
+    (!!editingKPI && targetsLoading);
 
   const isAggregation =
     kpiPeriod !== "OneTime"
@@ -763,7 +783,7 @@ function KPIForm({
             <Input
               id="kpi-score-param-input"
               type="text"
-              placeholder="e.g. 0=No progress, 3=On track, 5=Exceeded target by >20%"
+              placeholder="e.g. 0: No Progress, 3: On track, 5: Exceeded target by >20%"
               value={kpiScoreParameter}
               onChange={(e) =>
                 setKpiScoreParameter(
@@ -1070,6 +1090,7 @@ function ViewPanel({
   objectiveName,
   onClose,
 }: ViewPanelProps) {
+  const { data: scoreParam = "" } = useGetKPIScoreParameter(kpi.kpiId);
   const status =
     STATUS_CONFIG[kpi.kpiStatus as Variant_Approved_Draft_Submitted_Revised] ??
     STATUS_CONFIG[Variant_Approved_Draft_Submitted_Revised.Draft];
@@ -1120,26 +1141,22 @@ function ViewPanel({
               </span>
             </div>
           ))}
-          {(() => {
-            const scoreParam = getKPIScoreParameter(kpi.kpiId);
-            if (!scoreParam) return null;
-            return (
-              <div className="py-2 border-b border-border">
-                <span className="text-sm text-muted-foreground block mb-1">
-                  Score Parameter
-                </span>
-                <span
-                  className="text-xs font-medium px-3 py-2 rounded-lg block leading-relaxed"
-                  style={{
-                    background: "oklch(0.94 0.012 252)",
-                    color: "oklch(0.38 0.065 258)",
-                  }}
-                >
-                  {scoreParam}
-                </span>
-              </div>
-            );
-          })()}
+          {scoreParam && (
+            <div className="py-2 border-b border-border">
+              <span className="text-sm text-muted-foreground block mb-1">
+                Score Parameter
+              </span>
+              <span
+                className="text-xs font-medium px-3 py-2 rounded-lg block leading-relaxed"
+                style={{
+                  background: "oklch(0.94 0.012 252)",
+                  color: "oklch(0.38 0.065 258)",
+                }}
+              >
+                {scoreParam}
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-muted-foreground">Status</span>
             <span

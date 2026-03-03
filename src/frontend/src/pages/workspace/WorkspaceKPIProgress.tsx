@@ -13,6 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useGetKPIProgressData,
+  useGetKPIScoreParameter,
   useListBSCAspects,
   useListKPIYears,
   useListKPIs,
@@ -20,11 +21,7 @@ import {
   useMyProfile,
   useUpdateKPIProgress,
 } from "@/hooks/useQueries";
-import { getKPIScoreParameter } from "@/utils/backendExtended";
-import type {
-  KPIProgressRecord,
-  KPITargetRecord,
-} from "@/utils/backendExtended";
+import type { KPIProgressRecord, KPITargetRecord } from "@/hooks/useQueries";
 import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -459,6 +456,8 @@ interface PeriodRowProps {
   targetRecord?: KPITargetRecord;
   progressRecord?: KPIProgressRecord;
   index: number;
+  /** Called immediately after a successful save so parent can recalculate scores */
+  onSaved?: (periodIndex: number, achievement: number, score: number) => void;
 }
 
 function PeriodRow({
@@ -468,6 +467,7 @@ function PeriodRow({
   targetRecord,
   progressRecord,
   index,
+  onSaved,
 }: PeriodRowProps) {
   const updateProgress = useUpdateKPIProgress();
 
@@ -484,6 +484,14 @@ function PeriodRow({
     progressRecord?.score !== undefined ? String(progressRecord.score) : "",
   );
   const [saving, setSaving] = useState(false);
+
+  // Sync local state when the persisted progress record changes (e.g. after query refetch)
+  useEffect(() => {
+    if (progressRecord !== undefined) {
+      setAchievement(String(progressRecord.achievement));
+      setScore(String(progressRecord.score));
+    }
+  }, [progressRecord]);
 
   const targetValue = targetRecord?.targetValue;
   const lastUpdated = progressRecord?.updatedAt
@@ -517,6 +525,8 @@ function PeriodRow({
       });
       toast.success(`${label} progress saved`);
       setIsEditing(false);
+      // Immediately notify parent so score gauges update without waiting for refetch
+      onSaved?.(periodIndex, achievementVal, scoreVal);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update");
     } finally {
@@ -725,10 +735,49 @@ function KPIProgressCard({
   const { data: progressData, isLoading: progressLoading } =
     useGetKPIProgressData(kpi.kpiId);
 
+  // Local overrides applied immediately on save so scores update without waiting for refetch
+  const [localProgressOverrides, setLocalProgressOverrides] = useState<
+    Map<number, { achievement: number; score: number }>
+  >(new Map());
+
+  const handlePeriodSaved = (
+    periodIndex: number,
+    achievement: number,
+    score: number,
+  ) => {
+    setLocalProgressOverrides((prev) => {
+      const next = new Map(prev);
+      next.set(periodIndex, { achievement, score });
+      return next;
+    });
+  };
+
+  // Build effective progress list: start from backend data then apply local overrides
+  const effectiveProgress = useMemo<KPIProgressRecord[]>(() => {
+    const base = progressData?.progress ?? [];
+    if (localProgressOverrides.size === 0) return base;
+    const map = new Map<number, KPIProgressRecord>(
+      base.map((r) => [Number(r.periodIndex), r]),
+    );
+    for (const [periodIdx, override] of localProgressOverrides.entries()) {
+      const existing = map.get(periodIdx);
+      map.set(periodIdx, {
+        progressId: existing?.progressId ?? "",
+        kpiId: kpi.kpiId,
+        periodIndex: BigInt(periodIdx),
+        achievement: override.achievement,
+        score: override.score,
+        updatedAt: BigInt(Date.now()) * 1_000_000n,
+        updatedBy: existing?.updatedBy ?? null,
+      });
+    }
+    return Array.from(map.values());
+  }, [progressData?.progress, localProgressOverrides, kpi.kpiId]);
+
   const yearlyAchievement = useMemo(() => {
-    if (!progressData?.progress?.length) return 0;
-    return calcYearlyAchievement(kpi.kpiPeriod, progressData.progress);
-  }, [kpi.kpiPeriod, progressData]);
+    if (!effectiveProgress.length) return 0;
+    return calcYearlyAchievement(kpi.kpiPeriod, effectiveProgress);
+  }, [kpi.kpiPeriod, effectiveProgress]);
 
   const finalScore = useMemo(
     () => calcFinalScore(yearlyAchievement, kpi.kpiWeight),
@@ -740,15 +789,13 @@ function KPIProgressCard({
     onAchievementChange?.(kpi.kpiId, yearlyAchievement, finalScore);
   }, [kpi.kpiId, yearlyAchievement, finalScore, onAchievementChange]);
 
-  // Use Number() comparison since localStorage-backed records use plain number periodIndex
-  // (stored as BigInt in the type but the underlying value from localStorage is a number)
   const getTargetForPeriod = (periodIdx: number) =>
     progressData?.targets?.find((t) => Number(t.periodIndex) === periodIdx);
 
   const getProgressForPeriod = (periodIdx: number) =>
-    progressData?.progress?.find((p) => Number(p.periodIndex) === periodIdx);
+    effectiveProgress.find((p) => Number(p.periodIndex) === periodIdx);
 
-  const scoreParam = getKPIScoreParameter(kpi.kpiId);
+  const { data: scoreParam = "" } = useGetKPIScoreParameter(kpi.kpiId);
 
   return (
     <motion.div
@@ -924,6 +971,7 @@ function KPIProgressCard({
                       targetRecord={getTargetForPeriod(i + 1)}
                       progressRecord={getProgressForPeriod(i + 1)}
                       index={i}
+                      onSaved={handlePeriodSaved}
                     />
                   ))}
                 </div>

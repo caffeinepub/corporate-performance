@@ -224,6 +224,9 @@ actor {
   let bscAspects = Map.empty<BSCAspectId, BSCAspect>();
   let strategicObjectives = Map.empty<StrategicObjectiveId, StrategicObjective>();
   let kpis = Map.empty<KPIId, KPI>();
+  // Separate stable store for KPI score parameters (stored outside KPI type
+  // to avoid breaking stable variable compatibility on upgrade)
+  let kpiScoreParameters = Map.empty<KPIId, Text>();
   let kpiTargets = Map.empty<TargetId, KPITarget>();
   let kpiProgress = Map.empty<ProgressId, KPIProgress>();
   let auditLogs = Map.empty<AuditId, AuditLog>();
@@ -1081,6 +1084,7 @@ actor {
     strategicObjectiveId : Text,
     organizationNodeId : Text,
     kpiMeasurement : Text,
+    kpiScoreParameter : ?Text,
     kpiPeriod : Text,
     kpiWeight : Float
   ) : async KPIId {
@@ -1158,6 +1162,11 @@ actor {
         };
 
         kpis.add(kpiId, kpi);
+        // Store score parameter separately to avoid stable type compatibility issues
+        switch (kpiScoreParameter) {
+          case (null) {};
+          case (?sp) { kpiScoreParameters.add(kpiId, sp) };
+        };
         logAudit(user.companyId, "KPI", kpiId, "CREATE", caller);
         kpiId;
       };
@@ -1169,6 +1178,7 @@ actor {
     bscAspectId : Text,
     strategicObjectiveId : Text,
     kpiMeasurement : Text,
+    kpiScoreParameter : ?Text,
     kpiPeriod : Text,
     kpiWeight : Float
   ) : async () {
@@ -1236,6 +1246,11 @@ actor {
         };
 
         kpis.add(kpiId, updated);
+        // Store score parameter separately
+        switch (kpiScoreParameter) {
+          case (null) { kpiScoreParameters.remove(kpiId) };
+          case (?sp) { kpiScoreParameters.add(kpiId, sp) };
+        };
         logAudit(user.companyId, "KPI", kpiId, "UPDATE", caller);
       };
     };
@@ -1263,6 +1278,7 @@ actor {
         };
 
         kpis.remove(kpiId);
+        kpiScoreParameters.remove(kpiId);
         logAudit(user.companyId, "KPI", kpiId, "DELETE", caller);
       };
     };
@@ -1473,7 +1489,7 @@ actor {
     };
   };
 
-  public shared ({ caller }) func updateKPIProgress(kpiId : KPIId, periodIndex : Nat, achievement : Float) : async () {
+  public shared ({ caller }) func updateKPIProgress(kpiId : KPIId, periodIndex : Nat, achievement : Float, score : Float) : async () {
     let user = requireActiveUser(caller);
 
     switch (kpis.get(kpiId)) {
@@ -1503,19 +1519,109 @@ actor {
           };
         };
 
+        // Upsert: remove existing progress for this kpiId+periodIndex before adding new
+        let existingKey = kpiProgress.entries().toArray().find(
+          func((_, p)) { p.kpiId == kpiId and p.periodIndex == periodIndex }
+        );
+        switch (existingKey) {
+          case (?(existingId, _)) { kpiProgress.remove(existingId) };
+          case (null) {};
+        };
+
         let progressId = generateId();
         let progress : KPIProgress = {
           progressId;
           kpiId;
           periodIndex;
           achievement;
-          score = 0.0;
+          score;
           updatedAt = Time.now();
           updatedBy = caller;
         };
 
         kpiProgress.add(progressId, progress);
         logAudit(user.companyId, "KPIProgress", progressId, "UPDATE", caller);
+      };
+    };
+  };
+
+  public shared ({ caller }) func saveKPITargets(kpiId : KPIId, targets : [(Nat, Float)]) : async () {
+    let user = requireActiveUser(caller);
+
+    switch (kpis.get(kpiId)) {
+      case (null) { Runtime.trap("KPI not found") };
+      case (?kpi) {
+        requireSameCompany(caller, kpi.companyId);
+
+        switch (roleAssignments.get(kpi.ownerRoleAssignmentId)) {
+          case (null) { Runtime.trap("Owner role assignment not found") };
+          case (?ownerRole) {
+            if (ownerRole.userId != user.userId) {
+              Runtime.trap("Unauthorized: Only the KPI owner can save targets");
+            };
+          };
+        };
+
+        // Remove existing targets for this KPI
+        let existing = kpiTargets.entries().toArray().filter(func((_, t)) { t.kpiId == kpiId });
+        for ((existingId, _) in existing.vals()) {
+          kpiTargets.remove(existingId);
+        };
+
+        // Add new targets
+        for ((periodIndex, targetValue) in targets.vals()) {
+          let targetId = generateId();
+          let target : KPITarget = {
+            targetId;
+            kpiId;
+            periodIndex;
+            targetValue;
+          };
+          kpiTargets.add(targetId, target);
+        };
+
+        logAudit(user.companyId, "KPITarget", kpiId, "SAVE_TARGETS", caller);
+      };
+    };
+  };
+
+  public query ({ caller }) func getKPITargets(kpiId : KPIId) : async [KPITarget] {
+    let user = requireCallerUser(caller);
+
+    switch (kpis.get(kpiId)) {
+      case (null) { Runtime.trap("KPI not found") };
+      case (?kpi) {
+        if (kpi.companyId != user.companyId) {
+          Runtime.trap("Unauthorized: Access denied to other company data");
+        };
+        kpiTargets.values().toArray().filter(func(t) { t.kpiId == kpiId });
+      };
+    };
+  };
+
+  public query ({ caller }) func getKPIScoreParameter(kpiId : KPIId) : async ?Text {
+    let user = requireCallerUser(caller);
+    switch (kpis.get(kpiId)) {
+      case (null) { null };
+      case (?kpi) {
+        if (kpi.companyId != user.companyId) {
+          Runtime.trap("Unauthorized: Access denied");
+        };
+        kpiScoreParameters.get(kpiId);
+      };
+    };
+  };
+
+  public query ({ caller }) func getKPIProgressList(kpiId : KPIId) : async [KPIProgress] {
+    let user = requireCallerUser(caller);
+
+    switch (kpis.get(kpiId)) {
+      case (null) { Runtime.trap("KPI not found") };
+      case (?kpi) {
+        if (kpi.companyId != user.companyId) {
+          Runtime.trap("Unauthorized: Access denied to other company data");
+        };
+        kpiProgress.values().toArray().filter(func(p) { p.kpiId == kpiId });
       };
     };
   };
@@ -2081,4 +2187,5 @@ actor {
 
     filtered;
   };
+
 };

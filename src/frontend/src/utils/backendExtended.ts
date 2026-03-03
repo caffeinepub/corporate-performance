@@ -5,17 +5,17 @@
  * after the initial code generation, and are therefore missing from
  * the locked backend.ts / backend.did.js / backend.d.ts.
  *
- * Uses @dfinity/agent + @dfinity/candid to create a minimal supplementary
- * actor that communicates directly with the deployed canister.
+ * Uses @dfinity/agent + @dfinity/candid to create a supplementary actor
+ * that communicates directly with the deployed canister.
  *
- * Also provides localStorage-based utilities for data that is managed
- * client-side (kpiScoreParameter, kpiTargets, kpiProgress+score).
+ * All KPI data (targets, score parameters, progress+score) is stored
+ * in the backend canister -- no localStorage.
  */
 
 import { Actor, HttpAgent } from "@dfinity/agent";
 import type { IDL } from "@dfinity/candid";
 
-// ─── Config loader (mirrors config.ts without being locked) ──────────────────
+// ─── Config loader ────────────────────────────────────────────────────────────
 
 let _cachedConfig: { host: string; canisterId: string } | null = null;
 
@@ -53,7 +53,7 @@ async function loadBackendConfig(): Promise<{
   return _cachedConfig;
 }
 
-// ─── Minimal IDL for missing/updated methods ──────────────────────────────────
+// ─── Full Candid IDL for extended backend methods ─────────────────────────────
 
 function extendedIdlFactory({
   IDL: IdlParam,
@@ -61,50 +61,92 @@ function extendedIdlFactory({
   IDL: typeof IDL;
 }): IDL.ServiceClass {
   const KPIId = IdlParam.Text;
+  const KPITargetType = IdlParam.Record({
+    targetId: IdlParam.Text,
+    kpiId: IdlParam.Text,
+    periodIndex: IdlParam.Nat,
+    targetValue: IdlParam.Float64,
+  });
+  const KPIProgressType = IdlParam.Record({
+    progressId: IdlParam.Text,
+    kpiId: IdlParam.Text,
+    periodIndex: IdlParam.Nat,
+    achievement: IdlParam.Float64,
+    score: IdlParam.Float64,
+    updatedAt: IdlParam.Int,
+    updatedBy: IdlParam.Principal,
+  });
 
   return IdlParam.Service({
-    deleteKPI: IdlParam.Func([KPIId], [], []),
+    // ── KPI CRUD ───────────────────────────────────────────────────────────────
+    createKPI: IdlParam.Func(
+      [
+        IdlParam.Text, // kpiYearId
+        IdlParam.Text, // bscAspectId
+        IdlParam.Text, // strategicObjectiveId
+        IdlParam.Text, // organizationNodeId
+        IdlParam.Text, // kpiMeasurement
+        IdlParam.Opt(IdlParam.Text), // kpiScoreParameter
+        IdlParam.Text, // kpiPeriod
+        IdlParam.Float64, // kpiWeight
+      ],
+      [IdlParam.Text],
+      [],
+    ),
     updateKPI: IdlParam.Func(
       [
         KPIId,
         IdlParam.Text, // bscAspectId
         IdlParam.Text, // strategicObjectiveId
         IdlParam.Text, // kpiMeasurement
+        IdlParam.Opt(IdlParam.Text), // kpiScoreParameter
         IdlParam.Text, // kpiPeriod
         IdlParam.Float64, // kpiWeight
       ],
       [],
       [],
     ),
-    // updateKPIProgress: 3 params as backend defines — (kpiId, periodIndex, achievement)
+    deleteKPI: IdlParam.Func([KPIId], [], []),
+
+    // ── KPI Targets ────────────────────────────────────────────────────────────
+    saveKPITargets: IdlParam.Func(
+      [KPIId, IdlParam.Vec(IdlParam.Tuple(IdlParam.Nat, IdlParam.Float64))],
+      [],
+      [],
+    ),
+    getKPITargets: IdlParam.Func(
+      [KPIId],
+      [IdlParam.Vec(KPITargetType)],
+      ["query"],
+    ),
+
+    // ── KPI Score Parameter ────────────────────────────────────────────────────
+    getKPIScoreParameter: IdlParam.Func(
+      [KPIId],
+      [IdlParam.Opt(IdlParam.Text)],
+      ["query"],
+    ),
+
+    // ── KPI Progress ───────────────────────────────────────────────────────────
     updateKPIProgress: IdlParam.Func(
-      [KPIId, IdlParam.Nat, IdlParam.Float64],
+      [
+        KPIId,
+        IdlParam.Nat, // periodIndex
+        IdlParam.Float64, // achievement
+        IdlParam.Float64, // score
+      ],
       [],
       [],
+    ),
+    getKPIProgressList: IdlParam.Func(
+      [KPIId],
+      [IdlParam.Vec(KPIProgressType)],
+      ["query"],
     ),
   });
 }
 
 // ─── Extended Actor Types ─────────────────────────────────────────────────────
-
-export interface ExtendedActor {
-  deleteKPI: (kpiId: string) => Promise<void>;
-  updateKPI: (
-    kpiId: string,
-    bscAspectId: string,
-    strategicObjectiveId: string,
-    kpiMeasurement: string,
-    kpiPeriod: string,
-    kpiWeight: number,
-  ) => Promise<void>;
-  updateKPIProgress: (
-    kpiId: string,
-    periodIndex: bigint,
-    achievement: number,
-  ) => Promise<void>;
-}
-
-// ─── KPI Progress Data Types (localStorage-backed) ───────────────────────────
 
 export interface KPITargetRecord {
   targetId: string;
@@ -128,118 +170,44 @@ export interface KPIProgressData {
   progress: KPIProgressRecord[];
 }
 
-// ─── localStorage: KPI Score Parameter ───────────────────────────────────────
-
-export function saveKPIScoreParameter(kpiId: string, value: string): void {
-  try {
-    localStorage.setItem(`kpi_score_param_${kpiId}`, value);
-  } catch {
-    // localStorage may be unavailable in some contexts
-  }
-}
-
-export function getKPIScoreParameter(kpiId: string): string {
-  try {
-    return localStorage.getItem(`kpi_score_param_${kpiId}`) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-export function deleteKPIScoreParameter(kpiId: string): void {
-  try {
-    localStorage.removeItem(`kpi_score_param_${kpiId}`);
-  } catch {
-    // noop
-  }
-}
-
-// ─── localStorage: KPI Targets ────────────────────────────────────────────────
-
-export interface LocalKPITarget {
-  periodIndex: number;
-  targetValue: number;
-}
-
-export function saveKPITargetsLocal(
-  kpiId: string,
-  targets: LocalKPITarget[],
-): void {
-  try {
-    localStorage.setItem(`kpi_targets_${kpiId}`, JSON.stringify(targets));
-  } catch {
-    // noop
-  }
-}
-
-export function getKPITargetsLocal(kpiId: string): LocalKPITarget[] {
-  try {
-    const raw = localStorage.getItem(`kpi_targets_${kpiId}`);
-    if (!raw) return [];
-    return JSON.parse(raw) as LocalKPITarget[];
-  } catch {
-    return [];
-  }
-}
-
-export function deleteKPITargetsLocal(kpiId: string): void {
-  try {
-    localStorage.removeItem(`kpi_targets_${kpiId}`);
-  } catch {
-    // noop
-  }
-}
-
-// ─── localStorage: KPI Progress (with score) ─────────────────────────────────
-
-export interface LocalKPIProgress {
-  periodIndex: number;
-  achievement: number;
-  score: number;
-  updatedAt: number; // Date.now() timestamp
-}
-
-export function saveKPIProgressLocal(
-  kpiId: string,
-  periodIndex: number,
-  achievement: number,
-  score: number,
-): void {
-  try {
-    const existing = getKPIProgressLocalRaw(kpiId);
-    const filtered = existing.filter((p) => p.periodIndex !== periodIndex);
-    filtered.push({ periodIndex, achievement, score, updatedAt: Date.now() });
-    localStorage.setItem(`kpi_progress_${kpiId}`, JSON.stringify(filtered));
-  } catch {
-    // noop
-  }
-}
-
-function getKPIProgressLocalRaw(kpiId: string): LocalKPIProgress[] {
-  try {
-    const raw = localStorage.getItem(`kpi_progress_${kpiId}`);
-    if (!raw) return [];
-    return JSON.parse(raw) as LocalKPIProgress[];
-  } catch {
-    return [];
-  }
-}
-
-export function getKPIProgressLocal(kpiId: string): LocalKPIProgress[] {
-  return getKPIProgressLocalRaw(kpiId);
-}
-
-export function deleteKPIProgressLocal(kpiId: string): void {
-  try {
-    localStorage.removeItem(`kpi_progress_${kpiId}`);
-  } catch {
-    // noop
-  }
+export interface ExtendedActor {
+  createKPI: (
+    kpiYearId: string,
+    bscAspectId: string,
+    strategicObjectiveId: string,
+    organizationNodeId: string,
+    kpiMeasurement: string,
+    kpiScoreParameter: [string] | [],
+    kpiPeriod: string,
+    kpiWeight: number,
+  ) => Promise<string>;
+  updateKPI: (
+    kpiId: string,
+    bscAspectId: string,
+    strategicObjectiveId: string,
+    kpiMeasurement: string,
+    kpiScoreParameter: [string] | [],
+    kpiPeriod: string,
+    kpiWeight: number,
+  ) => Promise<void>;
+  deleteKPI: (kpiId: string) => Promise<void>;
+  getKPIScoreParameter: (kpiId: string) => Promise<[string] | []>;
+  saveKPITargets: (
+    kpiId: string,
+    targets: Array<[bigint, number]>,
+  ) => Promise<void>;
+  getKPITargets: (kpiId: string) => Promise<KPITargetRecord[]>;
+  updateKPIProgress: (
+    kpiId: string,
+    periodIndex: bigint,
+    achievement: number,
+    score: number,
+  ) => Promise<void>;
+  getKPIProgressList: (kpiId: string) => Promise<KPIProgressRecord[]>;
 }
 
 // ─── Actor factory ────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _actorCache: { actor: ExtendedActor; identityKey: string } | null = null;
 
 export function clearActorCache(): void {
@@ -284,4 +252,20 @@ export async function getExtendedActor(
 
   _actorCache = { actor, identityKey };
   return actor;
+}
+
+// ─── Candid optional helper ───────────────────────────────────────────────────
+// Motoko `?Text` maps to Candid `opt text` which the JS agent represents as
+// `[value]` for Some and `[]` for None.
+
+export function toOptText(value: string | null | undefined): [string] | [] {
+  if (value && value.trim() !== "") return [value.trim()];
+  return [];
+}
+
+export function fromOptText(
+  value: [string] | [] | string | null | undefined,
+): string {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return (value as string) ?? "";
 }
