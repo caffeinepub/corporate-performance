@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -15,7 +16,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Activity, CheckCircle2, Info, Loader2, Lock } from "lucide-react";
+import {
+  Activity,
+  Calendar,
+  CheckCircle2,
+  Info,
+  Loader2,
+  Lock,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -29,6 +37,7 @@ import {
   useListKPIYears,
   useListOKRs,
   useMyProfile,
+  useUpdateOKR,
   useUpdateOKRProgress,
 } from "../../../hooks/useQueries";
 
@@ -128,21 +137,38 @@ function OKRProgressCard({
   delay,
 }: OKRProgressCardProps) {
   const updateProgress = useUpdateOKRProgress();
+  const updateOKR = useUpdateOKR();
   const aspect = getAspectConfig(okr.okrAspect);
 
   // Initialize with backend's current realization value
   const currentBackendValue = getRealizationBackendValue(okr.realization);
   const [realization, setRealization] = useState(currentBackendValue);
   const [notes, setNotes] = useState(okr.notes ?? "");
+  const [revisedTargetDate, setRevisedTargetDate] = useState(
+    okr.revisedTargetDate ?? "",
+  );
   const [saved, setSaved] = useState(false);
+  const isSaving = updateProgress.isPending || updateOKR.isPending;
 
   const handleSave = async () => {
     try {
-      await updateProgress.mutateAsync({
-        okrId: okr.okrId,
-        realization,
-        notes: notes.trim() || null,
-      });
+      // Save progress (realization + notes) and revisedTargetDate in parallel
+      await Promise.all([
+        updateProgress.mutateAsync({
+          okrId: okr.okrId,
+          realization,
+          notes: notes.trim() || null,
+        }),
+        updateOKR.mutateAsync({
+          okrId: okr.okrId,
+          okrAspect: okr.okrAspect,
+          objective: okr.objective,
+          keyResult: okr.keyResult,
+          targetValue: okr.targetValue,
+          initialTargetDate: okr.initialTargetDate,
+          revisedTargetDate: revisedTargetDate.trim() || null,
+        }),
+      ]);
       setSaved(true);
       toast.success("Progress updated");
       setTimeout(() => setSaved(false), 2500);
@@ -181,6 +207,19 @@ function OKRProgressCard({
           <p className="text-xs text-muted-foreground mt-1 break-words">
             Key Result: {okr.keyResult}
           </p>
+          {/* Initial Target Date */}
+          {okr.initialTargetDate && (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <Calendar
+                className="w-3 h-3 flex-shrink-0"
+                style={{ color: "oklch(0.55 0.04 258)" }}
+              />
+              <span className="text-xs text-muted-foreground">
+                Initial target:{" "}
+                <span className="font-medium">{okr.initialTargetDate}</span>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Target */}
@@ -247,6 +286,44 @@ function OKRProgressCard({
           </p>
         </div>
 
+        {/* Revised Target Date */}
+        <div className="space-y-1.5">
+          <Label
+            htmlFor={`revised-date-${okr.okrId}`}
+            className="text-sm font-medium"
+          >
+            Revised Target Date{" "}
+            <span className="text-muted-foreground font-normal">
+              (optional)
+            </span>
+          </Label>
+          {isYearOpen ? (
+            <Input
+              id={`revised-date-${okr.okrId}`}
+              type="date"
+              value={revisedTargetDate}
+              onChange={(e) => setRevisedTargetDate(e.target.value)}
+              className="text-sm h-9"
+              data-ocid="okr.revised_date.input"
+            />
+          ) : (
+            <div
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-sm"
+              style={{
+                background: "oklch(0.95 0.010 252)",
+                color: "oklch(0.42 0.04 258)",
+              }}
+            >
+              <Calendar className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
+              <span>
+                {revisedTargetDate || (
+                  <span className="italic text-muted-foreground">Not set</span>
+                )}
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* Notes */}
         <div className="space-y-1.5">
           <Label htmlFor={`notes-${okr.okrId}`} className="text-sm font-medium">
@@ -267,39 +344,28 @@ function OKRProgressCard({
         </div>
 
         {/* Save Button */}
-        <div className="flex items-center justify-between">
-          {okr.revisedTargetDate && (
-            <p className="text-xs text-muted-foreground">
-              Revised target:{" "}
-              <span className="font-medium">{okr.revisedTargetDate}</span>
-            </p>
-          )}
-          <div className="ml-auto">
-            <Button
-              size="sm"
-              onClick={() => void handleSave()}
-              disabled={!isYearOpen || updateProgress.isPending}
-              className="gap-1.5 text-xs h-8"
-              style={
-                isYearOpen
-                  ? { background: "oklch(0.38 0.12 145)", color: "white" }
-                  : undefined
-              }
-            >
-              {updateProgress.isPending ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : saved ? (
-                <CheckCircle2 className="w-3.5 h-3.5" />
-              ) : (
-                <Activity className="w-3.5 h-3.5" />
-              )}
-              {updateProgress.isPending
-                ? "Saving…"
-                : saved
-                  ? "Saved!"
-                  : "Save Progress"}
-            </Button>
-          </div>
+        <div className="flex items-center justify-end">
+          <Button
+            size="sm"
+            onClick={() => void handleSave()}
+            disabled={!isYearOpen || isSaving}
+            className="gap-1.5 text-xs h-8"
+            style={
+              isYearOpen
+                ? { background: "oklch(0.38 0.12 145)", color: "white" }
+                : undefined
+            }
+            data-ocid="okr.progress.save_button"
+          >
+            {isSaving ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : saved ? (
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            ) : (
+              <Activity className="w-3.5 h-3.5" />
+            )}
+            {isSaving ? "Saving…" : saved ? "Saved!" : "Save Progress"}
+          </Button>
         </div>
       </div>
     </motion.div>

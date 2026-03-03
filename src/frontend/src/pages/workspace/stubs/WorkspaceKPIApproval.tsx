@@ -40,6 +40,7 @@ import {
   ChevronDown,
   ChevronUp,
   ClipboardCheck,
+  Eye,
   Filter,
   Loader2,
   RotateCcw,
@@ -51,6 +52,8 @@ import type { KPI, OrgNode } from "../../../backend.d";
 import { Variant_Approved_Draft_Submitted_Revised } from "../../../backend.d";
 import {
   useApproveKPI,
+  useGetKPIScoreParameter,
+  useGetKPITargets,
   useListBSCAspects,
   useListKPIYears,
   useListKPIs,
@@ -251,6 +254,35 @@ function FilterBar({
   );
 }
 
+// ─── Period label helper for approval sheet ───────────────────────────────────
+
+function getPeriodLabelsForApproval(period: string): string[] {
+  switch (period) {
+    case "Annual":
+    case "Monthly":
+      return [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+    case "Quarterly":
+      return ["Q1", "Q2", "Q3", "Q4"];
+    case "SemiAnnual":
+      return ["H1", "H2"];
+    default:
+      return ["Year Target"];
+  }
+}
+
 // ─── KPI Detail Sheet ─────────────────────────────────────────────────────────
 
 interface KPIDetailSheetProps {
@@ -260,7 +292,7 @@ interface KPIDetailSheetProps {
   allNodes: OrgNode[];
   aspectName: string;
   objectiveName: string;
-  yearLabel: string;
+  orgNodeName: string;
   onApprove: (kpiId: string) => void;
   onRevise: (kpi: KPI) => void;
   isApproving: boolean;
@@ -273,19 +305,27 @@ function KPIDetailSheet({
   allNodes,
   aspectName,
   objectiveName,
-  yearLabel,
+  orgNodeName,
   onApprove,
   onRevise,
   isApproving,
 }: KPIDetailSheetProps) {
+  // Hook calls must always run (no conditional hooks)
+  const { data: scoreParameter } = useGetKPIScoreParameter(kpi?.kpiId ?? "");
+  const { data: kpiTargets } = useGetKPITargets(kpi?.kpiId ?? "");
+
   if (!kpi) return null;
 
   const status = getStatusConfig(kpi.kpiStatus);
   const nodeChain = getNodeChain(kpi.organizationNodeId, allNodes);
+  const periodLabels = getPeriodLabelsForApproval(kpi.kpiPeriod);
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-2xl overflow-y-auto"
+      >
         <SheetHeader className="mb-6">
           <div className="flex items-center gap-3">
             <div
@@ -310,37 +350,52 @@ function KPIDetailSheet({
 
         {/* KPI Details */}
         <div className="space-y-4">
+          {/* KPI Information */}
           <div
-            className="rounded-xl border border-border p-4 space-y-3"
+            className="rounded-xl border border-border p-4 space-y-0"
             style={{ background: "oklch(0.98 0.004 252)" }}
           >
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              KPI Information
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+              KPI Detail
             </h3>
+            {/* Organization Node — highlighted */}
+            <div className="flex items-start justify-between gap-4 py-2.5 border-b border-border">
+              <span className="text-sm text-muted-foreground shrink-0">
+                Organization Node
+              </span>
+              <span
+                className="text-sm font-semibold text-right break-words max-w-[240px] px-2 py-0.5 rounded"
+                style={{
+                  background: "oklch(0.92 0.04 250)",
+                  color: "oklch(0.32 0.14 250)",
+                }}
+              >
+                {orgNodeName}
+              </span>
+            </div>
             {[
-              { label: "Year", value: yearLabel },
               { label: "BSC Aspect", value: aspectName },
               { label: "Strategic Objective", value: objectiveName },
               { label: "KPI Measurement", value: kpi.kpiMeasurement },
               {
-                label: "Period",
+                label: "Period Type",
                 value: PERIOD_LABELS[kpi.kpiPeriod] ?? kpi.kpiPeriod,
               },
-              { label: "Weight", value: `${kpi.kpiWeight}%` },
+              { label: "KPI Weight", value: `${kpi.kpiWeight}%` },
             ].map(({ label, value }) => (
               <div
                 key={label}
-                className="flex items-start justify-between gap-4 py-2 border-b border-border last:border-0"
+                className="flex items-start justify-between gap-4 py-2.5 border-b border-border last:border-0"
               >
                 <span className="text-sm text-muted-foreground shrink-0">
                   {label}
                 </span>
-                <span className="text-sm font-medium text-foreground text-right break-words max-w-[240px]">
+                <span className="text-sm font-medium text-foreground text-right break-words max-w-[280px]">
                   {value}
                 </span>
               </div>
             ))}
-            <div className="flex items-center justify-between py-2 border-t border-border">
+            <div className="flex items-center justify-between py-2.5 border-t border-border">
               <span className="text-sm text-muted-foreground">Status</span>
               <span
                 className="text-xs font-semibold px-2.5 py-1 rounded-full"
@@ -350,6 +405,176 @@ function KPIDetailSheet({
               </span>
             </div>
           </div>
+
+          {/* Score Parameter (Scoring Criteria) */}
+          <div
+            className="rounded-xl border border-border p-4 space-y-2"
+            style={{ background: "oklch(0.97 0.012 250)" }}
+          >
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Score Parameter (Scoring Criteria)
+              </h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              How to rate this KPI from 0 to 5
+            </p>
+            {scoreParameter ? (
+              <div
+                className="px-3 py-2.5 rounded-lg text-sm leading-relaxed font-mono"
+                style={{
+                  background: "oklch(0.93 0.018 250)",
+                  color: "oklch(0.32 0.10 250)",
+                  border: "1px solid oklch(0.85 0.025 250)",
+                }}
+              >
+                {scoreParameter}
+              </div>
+            ) : (
+              <p
+                className="text-xs italic"
+                style={{ color: "oklch(0.62 0.04 258)" }}
+              >
+                Not specified
+              </p>
+            )}
+          </div>
+
+          {/* KPI Targets + Yearly Target */}
+          {periodLabels.length > 0 && (
+            <div
+              className="rounded-xl border border-border p-4 space-y-3"
+              style={{ background: "oklch(0.98 0.004 252)" }}
+            >
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                KPI Score Parameter &amp; Targets
+              </h3>
+              {kpiTargets && kpiTargets.length > 0 ? (
+                <>
+                  {/* Yearly Target summary row */}
+                  {(() => {
+                    const numericTargets = periodLabels.map((_, i) => {
+                      const t = kpiTargets.find(
+                        (t) =>
+                          Number(t.periodIndex) === i + 1 ||
+                          String(t.periodIndex) === String(i + 1),
+                      );
+                      return t?.targetValue ?? null;
+                    });
+                    const validTargets = numericTargets.filter(
+                      (v): v is number => v !== null,
+                    );
+                    let yearlyTarget: number | null = null;
+                    if (validTargets.length > 0) {
+                      if (kpi.kpiPeriod === "Annual") {
+                        yearlyTarget = validTargets.reduce((a, b) => a + b, 0);
+                      } else if (kpi.kpiPeriod === "OneTime") {
+                        yearlyTarget = validTargets[0] ?? null;
+                      } else {
+                        yearlyTarget =
+                          validTargets.reduce((a, b) => a + b, 0) /
+                          validTargets.length;
+                      }
+                    }
+                    return yearlyTarget !== null ? (
+                      <div
+                        className="flex items-center justify-between px-3 py-2.5 rounded-lg"
+                        style={{
+                          background: "oklch(0.93 0.018 145)",
+                          border: "1px solid oklch(0.82 0.06 145)",
+                        }}
+                      >
+                        <span
+                          className="text-xs font-semibold"
+                          style={{ color: "oklch(0.38 0.12 145)" }}
+                        >
+                          Yearly Target
+                          {kpi.kpiPeriod === "Annual"
+                            ? " (Sum)"
+                            : kpi.kpiPeriod !== "OneTime"
+                              ? " (Avg)"
+                              : ""}
+                        </span>
+                        <span
+                          className="font-bold font-mono"
+                          style={{ color: "oklch(0.32 0.14 145)" }}
+                        >
+                          {yearlyTarget.toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
+                  <div className="overflow-hidden rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr
+                          style={{ background: "oklch(0.94 0.012 252)" }}
+                          className="border-b border-border"
+                        >
+                          <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">
+                            Period
+                          </th>
+                          <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">
+                            Target Value
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {periodLabels.map((label, i) => {
+                          const target = kpiTargets.find(
+                            (t) =>
+                              Number(t.periodIndex) === i + 1 ||
+                              String(t.periodIndex) === String(i + 1),
+                          );
+                          return (
+                            <tr
+                              // biome-ignore lint/suspicious/noArrayIndexKey: stable period index
+                              key={i}
+                              className="border-b border-border last:border-0"
+                              style={{
+                                background:
+                                  i % 2 === 0
+                                    ? "oklch(0.99 0.002 252)"
+                                    : "oklch(0.97 0.004 252)",
+                              }}
+                            >
+                              <td className="px-3 py-2">
+                                <span
+                                  className="text-xs font-bold px-2 py-0.5 rounded"
+                                  style={{
+                                    background: "oklch(0.92 0.012 252)",
+                                    color: "oklch(0.40 0.055 258)",
+                                  }}
+                                >
+                                  {label}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                <span className="text-sm font-semibold text-foreground">
+                                  {target !== undefined
+                                    ? target.targetValue.toLocaleString()
+                                    : "—"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <p
+                  className="text-xs italic"
+                  style={{ color: "oklch(0.62 0.04 258)" }}
+                >
+                  No targets saved yet
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Approval Chain */}
           <div
@@ -799,13 +1024,26 @@ function KPIApprovalRow({
         </span>
       </TableCell>
       <TableCell>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <span
             className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
             style={{ background: status.bg, color: status.color }}
           >
             {status.label}
           </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              onView(kpi);
+            }}
+            className="gap-1 text-xs h-8 px-2"
+            data-ocid="kpi.approval.view_detail_button"
+          >
+            <Eye className="w-3 h-3" />
+            Detail
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -846,7 +1084,6 @@ export default function WorkspaceKPIApproval() {
   const { data: profile } = useMyProfile();
   const { data: allNodes, isLoading: nodesLoading } =
     useListOrganizationNodes();
-  const { data: kpiYears } = useListKPIYears();
   const { data: bscAspects } = useListBSCAspects();
   const { data: allObjectives } = useListStrategicObjectives();
   const approveKPI = useApproveKPI();
@@ -921,10 +1158,6 @@ export default function WorkspaceKPIApproval() {
   const orgNodeMap = useMemo(
     () => new Map((allNodes ?? []).map((n) => [n.nodeId, n.nodeName])),
     [allNodes],
-  );
-  const yearLabelMap = useMemo(
-    () => new Map((kpiYears ?? []).map((y) => [y.kpiYearId, String(y.year)])),
-    [kpiYears],
   );
 
   // Stats: breakdown by submitter node
@@ -1197,9 +1430,10 @@ export default function WorkspaceKPIApproval() {
               detailKPI.strategicObjectiveId)
             : ""
         }
-        yearLabel={
+        orgNodeName={
           detailKPI
-            ? (yearLabelMap.get(detailKPI.kpiYearId) ?? detailKPI.kpiYearId)
+            ? (orgNodeMap.get(detailKPI.organizationNodeId) ??
+              detailKPI.organizationNodeId)
             : ""
         }
         onApprove={(id) => {

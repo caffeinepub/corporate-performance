@@ -722,10 +722,23 @@ export function useGetKPITargets(kpiId: string) {
     queryFn: async () => {
       if (!kpiId) return [];
       const extActor = await getExtendedActor(identity);
-      return extActor.getKPITargets(kpiId);
+      const raw = await extActor.getKPITargets(kpiId);
+      // Normalize periodIndex to always be bigint regardless of how
+      // the Candid decoder returns it (bigint or number).
+      return raw.map((t) => ({
+        ...t,
+        periodIndex: BigInt(
+          typeof t.periodIndex === "bigint"
+            ? t.periodIndex
+            : Number(t.periodIndex),
+        ),
+      }));
     },
     enabled: !!kpiId && !!identity,
-    staleTime: 30_000,
+    // No staleTime — always serve fresh target data so progress page
+    // never shows stale "—" for periods that already have targets saved.
+    staleTime: 0,
+    refetchOnMount: true,
   });
 }
 
@@ -770,10 +783,20 @@ export function useGetKPIProgressList(kpiId: string) {
     queryFn: async () => {
       if (!kpiId) return [];
       const extActor = await getExtendedActor(identity);
-      return extActor.getKPIProgressList(kpiId);
+      const raw = await extActor.getKPIProgressList(kpiId);
+      // Normalize periodIndex to bigint for consistent comparisons
+      return raw.map((r) => ({
+        ...r,
+        periodIndex: BigInt(
+          typeof r.periodIndex === "bigint"
+            ? r.periodIndex
+            : Number(r.periodIndex),
+        ),
+      }));
     },
     enabled: !!kpiId && !!identity,
     staleTime: 0,
+    refetchOnMount: true,
   });
 }
 

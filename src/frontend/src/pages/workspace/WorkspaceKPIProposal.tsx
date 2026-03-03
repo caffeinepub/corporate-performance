@@ -1627,6 +1627,9 @@ interface FilterBarProps {
   onAspectChange: (v: string) => void;
   selectedObjective: string;
   onObjectiveChange: (v: string) => void;
+  selectedOrgNode: string;
+  onOrgNodeChange: (v: string) => void;
+  userOrgNodes: Array<{ nodeId: string; nodeName: string }>;
 }
 
 function FilterBar({
@@ -1638,6 +1641,9 @@ function FilterBar({
   onAspectChange,
   selectedObjective,
   onObjectiveChange,
+  selectedOrgNode,
+  onOrgNodeChange,
+  userOrgNodes,
 }: FilterBarProps) {
   const { data: kpiYears } = useListKPIYears();
   const { data: bscAspects } = useListBSCAspects();
@@ -1662,6 +1668,7 @@ function FilterBar({
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center gap-2 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        data-ocid="kpi.proposal.filter.toggle"
       >
         <Filter className="w-4 h-4" />
         <span>Filters</span>
@@ -1680,7 +1687,36 @@ function FilterBar({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-4 pb-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 px-4 pb-4">
+              {/* Organization Node — only visible when user has multiple roles */}
+              {userOrgNodes.length > 1 && (
+                <div className="space-y-1.5 col-span-2 md:col-span-1">
+                  <Label className="text-xs text-muted-foreground font-semibold">
+                    Organization Node
+                  </Label>
+                  <Select
+                    value={selectedOrgNode}
+                    onValueChange={onOrgNodeChange}
+                    data-ocid="kpi.proposal.filter.org_node"
+                  >
+                    <SelectTrigger
+                      className="h-8 text-xs"
+                      style={{ borderColor: "oklch(0.78 0.12 250 / 0.6)" }}
+                    >
+                      <SelectValue placeholder="All nodes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All nodes</SelectItem>
+                      {userOrgNodes.map((n) => (
+                        <SelectItem key={n.nodeId} value={n.nodeId}>
+                          {n.nodeName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {/* Year */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">
@@ -1809,6 +1845,7 @@ export default function WorkspaceKPIProposal() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedAspect, setSelectedAspect] = useState("all");
   const [selectedObjective, setSelectedObjective] = useState("all");
+  const [selectedOrgNode, setSelectedOrgNode] = useState("all");
 
   const { data: kpis, isLoading: kpisLoading } = useListKPIs(
     selectedYear !== "all" ? selectedYear : undefined,
@@ -1823,7 +1860,7 @@ export default function WorkspaceKPIProposal() {
     );
   }, [kpis, myAssignmentIds]);
 
-  // Client-side filtering for status/aspect/objective
+  // Client-side filtering for status/aspect/objective/orgNode
   const filteredKPIs = useMemo(() => {
     return myKPIs.filter((k) => {
       if (
@@ -1838,9 +1875,17 @@ export default function WorkspaceKPIProposal() {
         k.strategicObjectiveId !== selectedObjective
       )
         return false;
+      if (selectedOrgNode !== "all" && k.organizationNodeId !== selectedOrgNode)
+        return false;
       return true;
     });
-  }, [myKPIs, selectedStatus, selectedAspect, selectedObjective]);
+  }, [
+    myKPIs,
+    selectedStatus,
+    selectedAspect,
+    selectedObjective,
+    selectedOrgNode,
+  ]);
 
   // Helpers for display
   const aspectMap = useMemo(
@@ -1857,6 +1902,15 @@ export default function WorkspaceKPIProposal() {
   const orgNodeMap = useMemo(
     () => new Map((orgNodes ?? []).map((n) => [n.nodeId, n.nodeName])),
     [orgNodes],
+  );
+
+  // User's org nodes for the filter dropdown (only nodes they have an active role in)
+  const userOrgNodesForFilter = useMemo(
+    () =>
+      (orgNodes ?? [])
+        .filter((n) => userOrgNodeIds.includes(n.nodeId))
+        .map((n) => ({ nodeId: n.nodeId, nodeName: n.nodeName })),
+    [orgNodes, userOrgNodeIds],
   );
 
   // Fix 2: Group myKPIs by organizationNodeId and sum weight per node
@@ -2133,6 +2187,9 @@ export default function WorkspaceKPIProposal() {
           onAspectChange={setSelectedAspect}
           selectedObjective={selectedObjective}
           onObjectiveChange={setSelectedObjective}
+          selectedOrgNode={selectedOrgNode}
+          onOrgNodeChange={setSelectedOrgNode}
+          userOrgNodes={userOrgNodesForFilter}
         />
 
         {/* Table */}

@@ -756,8 +756,12 @@ function KPIProgressCard({
   const effectiveProgress = useMemo<KPIProgressRecord[]>(() => {
     const base = progressData?.progress ?? [];
     if (localProgressOverrides.size === 0) return base;
+    // Normalize periodIndex to numbers for reliable map keying
     const map = new Map<number, KPIProgressRecord>(
-      base.map((r) => [Number(r.periodIndex), r]),
+      base.map((r) => [
+        Number(r.periodIndex),
+        { ...r, periodIndex: BigInt(Number(r.periodIndex)) },
+      ]),
     );
     for (const [periodIdx, override] of localProgressOverrides.entries()) {
       const existing = map.get(periodIdx);
@@ -790,10 +794,18 @@ function KPIProgressCard({
   }, [kpi.kpiId, yearlyAchievement, finalScore, onAchievementChange]);
 
   const getTargetForPeriod = (periodIdx: number) =>
-    progressData?.targets?.find((t) => Number(t.periodIndex) === periodIdx);
+    progressData?.targets?.find(
+      (t) =>
+        Number(t.periodIndex) === periodIdx ||
+        String(t.periodIndex) === String(periodIdx),
+    );
 
   const getProgressForPeriod = (periodIdx: number) =>
-    effectiveProgress.find((p) => Number(p.periodIndex) === periodIdx);
+    effectiveProgress.find(
+      (p) =>
+        Number(p.periodIndex) === periodIdx ||
+        String(p.periodIndex) === String(periodIdx),
+    );
 
   const { data: scoreParam = "" } = useGetKPIScoreParameter(kpi.kpiId);
 

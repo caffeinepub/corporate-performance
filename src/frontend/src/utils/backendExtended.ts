@@ -74,7 +74,7 @@ function extendedIdlFactory({
     achievement: IdlParam.Float64,
     score: IdlParam.Float64,
     updatedAt: IdlParam.Int,
-    updatedBy: IdlParam.Principal,
+    updatedBy: IdlParam.Opt(IdlParam.Principal),
   });
 
   return IdlParam.Service({
