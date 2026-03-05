@@ -48,25 +48,295 @@ function fromCandidVariant<T extends string>(v: unknown): T {
   throw new Error(`Unexpected Candid variant: ${JSON.stringify(v)}`);
 }
 
-function normalizeOrgNode(raw: OrgNode): OrgNode {
+// Unwrap Opt([T] | []) → T | undefined
+function fromOpt<T>(opt: [T] | []): T | undefined {
+  return opt.length > 0 ? opt[0] : undefined;
+}
+
+// ─── Normalizers for raw Candid types → backend.d.ts types ───────────────────
+
+function normalizeOrgNode(raw: {
+  nodeId: string;
+  companyId: string;
+  nodeType: Record<string, null>;
+  nodeName: string;
+  parentNodeId: [string] | [];
+  createdAt: bigint;
+  createdBy: unknown;
+  updatedAt: bigint;
+  updatedBy: unknown;
+}): OrgNode {
   return {
-    ...raw,
+    nodeId: raw.nodeId,
+    companyId: raw.companyId,
     nodeType:
       fromCandidVariant<Variant_Division_Director_PresidentDirector_Department>(
         raw.nodeType,
       ),
+    nodeName: raw.nodeName,
+    parentNodeId: fromOpt(raw.parentNodeId),
+    createdAt: raw.createdAt,
+    createdBy: raw.createdBy as OrgNode["createdBy"],
+    updatedAt: raw.updatedAt,
+    updatedBy: raw.updatedBy as OrgNode["updatedBy"],
   };
 }
 
+function normalizeRoleAssignment(raw: {
+  assignmentId: string;
+  userId: string;
+  companyId: string;
+  roleType: Record<string, null>;
+  orgNodeId: [string] | [];
+  activeStatus: boolean;
+  ultimateParentId: [string] | [];
+  grandParentId: [string] | [];
+  parentId: [string] | [];
+  assignedAt: bigint;
+  assignedBy: unknown;
+}): RoleAssignment {
+  return {
+    assignmentId: raw.assignmentId,
+    userId: raw.userId,
+    companyId: raw.companyId,
+    roleType: fromCandidVariant(raw.roleType),
+    orgNodeId: fromOpt(raw.orgNodeId),
+    activeStatus: raw.activeStatus,
+    ultimateParentId: fromOpt(raw.ultimateParentId),
+    grandParentId: fromOpt(raw.grandParentId),
+    parentId: fromOpt(raw.parentId),
+    assignedAt: raw.assignedAt,
+    assignedBy: raw.assignedBy as RoleAssignment["assignedBy"],
+  };
+}
+
+function normalizeUser(raw: {
+  userId: string;
+  principalId: unknown;
+  companyId: string;
+  fullName: string;
+  emailAddress: [string] | [];
+  registrationCodeUsed: [string] | [];
+  status: Record<string, null>;
+  createdAt: bigint;
+  createdBy: unknown;
+}): User {
+  return {
+    userId: raw.userId,
+    principalId: raw.principalId as User["principalId"],
+    companyId: raw.companyId,
+    fullName: raw.fullName,
+    emailAddress: fromOpt(raw.emailAddress),
+    registrationCodeUsed: fromOpt(raw.registrationCodeUsed),
+    status: fromCandidVariant(raw.status),
+    createdAt: raw.createdAt,
+    createdBy: raw.createdBy as User["createdBy"],
+  };
+}
+
+function normalizeKPIYear(raw: {
+  kpiYearId: string;
+  companyId: string;
+  year: bigint;
+  status: Record<string, null>;
+  createdAt: bigint;
+  createdBy: unknown;
+}): KPIYear {
+  return {
+    kpiYearId: raw.kpiYearId,
+    companyId: raw.companyId,
+    year: raw.year,
+    status: fromCandidVariant<Variant_Open_Closed>(raw.status),
+    createdAt: raw.createdAt,
+    createdBy: raw.createdBy as KPIYear["createdBy"],
+  };
+}
+
+function normalizeBSCAspect(raw: {
+  aspectId: string;
+  companyId: string;
+  aspectName: string;
+  createdAt: bigint;
+  createdBy: unknown;
+}): BSCAspect {
+  return {
+    aspectId: raw.aspectId,
+    companyId: raw.companyId,
+    aspectName: raw.aspectName,
+    createdAt: raw.createdAt,
+    createdBy: raw.createdBy as BSCAspect["createdBy"],
+  };
+}
+
+function normalizeStrategicObjective(raw: {
+  objectiveId: string;
+  companyId: string;
+  bscAspectId: string;
+  objectiveName: string;
+  createdAt: bigint;
+  createdBy: unknown;
+}): StrategicObjective {
+  return {
+    objectiveId: raw.objectiveId,
+    companyId: raw.companyId,
+    bscAspectId: raw.bscAspectId,
+    objectiveName: raw.objectiveName,
+    createdAt: raw.createdAt,
+    createdBy: raw.createdBy as StrategicObjective["createdBy"],
+  };
+}
+
+function normalizeRegistrationCode(raw: {
+  code: string;
+  companyId: string;
+  isActive: boolean;
+  createdAt: bigint;
+  createdBy: unknown;
+}): RegistrationCodeRecord {
+  return {
+    code: raw.code,
+    companyId: raw.companyId,
+    isActive: raw.isActive,
+    createdAt: raw.createdAt,
+    createdBy: raw.createdBy as RegistrationCodeRecord["createdBy"],
+  };
+}
+
+function normalizeKPI(raw: {
+  kpiId: string;
+  companyId: string;
+  ownerRoleAssignmentId: string;
+  organizationNodeId: string;
+  approverUserId: [string] | [];
+  kpiYearId: string;
+  bscAspectId: string;
+  strategicObjectiveId: string;
+  kpiMeasurement: string;
+  kpiPeriod: Record<string, null>;
+  kpiWeight: number;
+  kpiStatus: Record<string, null>;
+  revisionNotes: [string] | [];
+  createdAt: bigint;
+  createdBy: unknown;
+  updatedAt: bigint;
+  updatedBy: unknown;
+}): KPI {
+  return {
+    kpiId: raw.kpiId,
+    companyId: raw.companyId,
+    ownerRoleAssignmentId: raw.ownerRoleAssignmentId,
+    organizationNodeId: raw.organizationNodeId,
+    approverUserId: fromOpt(raw.approverUserId),
+    kpiYearId: raw.kpiYearId,
+    bscAspectId: raw.bscAspectId,
+    strategicObjectiveId: raw.strategicObjectiveId,
+    kpiMeasurement: raw.kpiMeasurement,
+    kpiPeriod:
+      fromCandidVariant<Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual>(
+        raw.kpiPeriod,
+      ),
+    kpiWeight: raw.kpiWeight,
+    kpiStatus: fromCandidVariant<Variant_Approved_Draft_Submitted_Revised>(
+      raw.kpiStatus,
+    ),
+    revisionNotes: fromOpt(raw.revisionNotes),
+    createdAt: raw.createdAt,
+    createdBy: raw.createdBy as KPI["createdBy"],
+    updatedAt: raw.updatedAt,
+    updatedBy: raw.updatedBy as KPI["updatedBy"],
+  };
+}
+
+function normalizeOKR(raw: {
+  okrId: string;
+  companyId: string;
+  kpiYearId: string;
+  ownerRoleAssignmentId: string;
+  approver1RoleAssignmentId: [string] | [];
+  approver2RoleAssignmentId: [string] | [];
+  okrStatus: Record<string, null>;
+  okrAspect: Record<string, null>;
+  objective: string;
+  keyResult: string;
+  targetValue: number;
+  initialTargetDate: string;
+  revisedTargetDate: [string] | [];
+  realization: Record<string, null>;
+  notes: [string] | [];
+  createdAt: bigint;
+  createdBy: unknown;
+}): OKR {
+  return {
+    okrId: raw.okrId,
+    companyId: raw.companyId,
+    kpiYearId: raw.kpiYearId,
+    ownerRoleAssignmentId: raw.ownerRoleAssignmentId,
+    approver1RoleAssignmentId: fromOpt(raw.approver1RoleAssignmentId),
+    approver2RoleAssignmentId: fromOpt(raw.approver2RoleAssignmentId),
+    okrStatus:
+      fromCandidVariant<Variant_Approved_Draft_Rejected_Submitted_Revised>(
+        raw.okrStatus,
+      ),
+    okrAspect: fromCandidVariant<Variant_People_Tools_Process>(raw.okrAspect),
+    objective: raw.objective,
+    keyResult: raw.keyResult,
+    targetValue: raw.targetValue,
+    initialTargetDate: raw.initialTargetDate,
+    revisedTargetDate: fromOpt(raw.revisedTargetDate),
+    realization:
+      fromCandidVariant<Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending>(
+        raw.realization,
+      ),
+    notes: fromOpt(raw.notes),
+    createdAt: raw.createdAt,
+    createdBy: raw.createdBy as OKR["createdBy"],
+  };
+}
+
+function normalizeMyProfile(raw: {
+  userId: string;
+  principalId: unknown;
+  companyId: string;
+  fullName: string;
+  status: Record<string, null>;
+  roles: Array<{
+    assignmentId: string;
+    userId: string;
+    companyId: string;
+    roleType: Record<string, null>;
+    orgNodeId: [string] | [];
+    activeStatus: boolean;
+    ultimateParentId: [string] | [];
+    grandParentId: [string] | [];
+    parentId: [string] | [];
+    assignedAt: bigint;
+    assignedBy: unknown;
+  }>;
+}): MyProfile {
+  return {
+    userId: raw.userId,
+    principalId: raw.principalId as MyProfile["principalId"],
+    companyId: raw.companyId,
+    fullName: raw.fullName,
+    status: fromCandidVariant(raw.status),
+    roles: raw.roles.map(normalizeRoleAssignment),
+  };
+}
+
+// ─── Auth / Profile ───────────────────────────────────────────────────────────
+
 export function useMyProfile() {
-  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const { isFetching } = useActor();
   return useQuery<MyProfile | null>({
     queryKey: ["myProfile"],
     queryFn: async () => {
-      if (!actor) return null;
-      return actor.getMyProfile();
+      const actor = await getExtendedActor(identity);
+      const result = await actor.getMyProfile();
+      if (result.length === 0) return null;
+      return normalizeMyProfile(result[0]);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!identity && !isFetching,
     // No staleTime — always refetch when actor changes so role-based redirects
     // pick up the correct profile immediately after Internet Identity login.
     staleTime: 0,
@@ -74,7 +344,7 @@ export function useMyProfile() {
 }
 
 export function useCreateCompany() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -86,17 +356,20 @@ export function useCreateCompany() {
       adminFullName: string;
       email: string | null;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.createCompany(companyName, adminFullName, email);
+      const actor = await getExtendedActor(identity);
+      return actor.createCompany(companyName, adminFullName, toOptText(email));
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["myProfile"] });
+      // Use refetchQueries so the profile is eagerly re-fetched and RootGate
+      // immediately redirects to /admin. invalidateQueries alone may not
+      // trigger a refetch if the component is not actively subscribed.
+      void queryClient.refetchQueries({ queryKey: ["myProfile"] });
     },
   });
 }
 
 export function useJoinCompany() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -108,11 +381,13 @@ export function useJoinCompany() {
       fullName: string;
       email: string | null;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.joinCompany(code, fullName, email);
+      const actor = await getExtendedActor(identity);
+      return actor.joinCompany(code, fullName, toOptText(email));
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["myProfile"] });
+      // Eagerly refetch so RootGate picks up the new profile and redirects
+      // to /pending without a manual navigate() call in the component.
+      void queryClient.refetchQueries({ queryKey: ["myProfile"] });
     },
   });
 }
@@ -120,23 +395,25 @@ export function useJoinCompany() {
 // ─── Registration Codes ───────────────────────────────────────────────────────
 
 export function useListRegistrationCodes() {
-  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const { isFetching } = useActor();
   return useQuery<RegistrationCodeRecord[]>({
     queryKey: ["registrationCodes"],
     queryFn: async () => {
-      if (!actor) return [];
-      return actor.listRegistrationCodes();
+      const actor = await getExtendedActor(identity);
+      const raw = await actor.listRegistrationCodes();
+      return raw.map(normalizeRegistrationCode);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!identity && !isFetching,
   });
 }
 
 export function useGenerateRegistrationCode() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.generateRegistrationCode();
     },
     onSuccess: () => {
@@ -146,11 +423,11 @@ export function useGenerateRegistrationCode() {
 }
 
 export function useDeactivateRegistrationCode() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (code: string) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.deactivateRegistrationCode(code);
     },
     onSuccess: () => {
@@ -162,15 +439,16 @@ export function useDeactivateRegistrationCode() {
 // ─── Organization Nodes ───────────────────────────────────────────────────────
 
 export function useListOrganizationNodes() {
-  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const { isFetching } = useActor();
   return useQuery<OrgNode[]>({
     queryKey: ["orgNodes"],
     queryFn: async () => {
-      if (!actor) return [];
+      const actor = await getExtendedActor(identity);
       const raw = await actor.listOrganizationNodes();
       return raw.map(normalizeOrgNode);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!identity && !isFetching,
   });
 }
 
@@ -191,7 +469,7 @@ function toBackendNodeType(nodeType: string): string {
 }
 
 export function useCreateOrganizationNode() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -203,11 +481,11 @@ export function useCreateOrganizationNode() {
       nodeName: string;
       parentNodeId: string | null;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.createOrganizationNode(
         toBackendNodeType(nodeType),
         nodeName,
-        parentNodeId,
+        toOptText(parentNodeId),
       );
     },
     onSuccess: () => {
@@ -217,7 +495,7 @@ export function useCreateOrganizationNode() {
 }
 
 export function useUpdateOrganizationNode() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -227,7 +505,7 @@ export function useUpdateOrganizationNode() {
       nodeId: string;
       nodeName: string;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.updateOrganizationNode(nodeId, nodeName);
     },
     onSuccess: () => {
@@ -239,19 +517,21 @@ export function useUpdateOrganizationNode() {
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 export function useListUsers() {
-  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const { isFetching } = useActor();
   return useQuery<User[]>({
     queryKey: ["users"],
     queryFn: async () => {
-      if (!actor) return [];
-      return actor.listUsers();
+      const actor = await getExtendedActor(identity);
+      const raw = await actor.listUsers();
+      return raw.map(normalizeUser);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!identity && !isFetching,
   });
 }
 
 export function useUpdateUserStatus() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -261,7 +541,7 @@ export function useUpdateUserStatus() {
       userId: string;
       newStatus: "ACTIVE" | "INACTIVE";
     }) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.updateUserStatus(userId, newStatus);
     },
     onSuccess: () => {
@@ -273,23 +553,6 @@ export function useUpdateUserStatus() {
 }
 
 // ─── Role Assignments ─────────────────────────────────────────────────────────
-
-function normalizeRoleAssignment(raw: RoleAssignment): RoleAssignment {
-  return { ...raw, roleType: fromCandidVariant(raw.roleType) };
-}
-
-export function useListRoleAssignments(userId?: string) {
-  const { actor, isFetching } = useActor();
-  return useQuery<RoleAssignment[]>({
-    queryKey: ["roleAssignments", userId ?? "all"],
-    queryFn: async () => {
-      if (!actor) return [];
-      const raw = await actor.listRoleAssignments(userId ?? null);
-      return raw.map(normalizeRoleAssignment);
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
 
 // Maps frontend enum values (PascalCase) to backend-expected strings (SCREAMING_SNAKE_CASE)
 function toBackendRoleType(roleType: string): string {
@@ -309,8 +572,22 @@ function toBackendRoleType(roleType: string): string {
   }
 }
 
+export function useListRoleAssignments(userId?: string) {
+  const { identity } = useInternetIdentity();
+  const { isFetching } = useActor();
+  return useQuery<RoleAssignment[]>({
+    queryKey: ["roleAssignments", userId ?? "all"],
+    queryFn: async () => {
+      const actor = await getExtendedActor(identity);
+      const raw = await actor.listRoleAssignments(userId ? [userId] : []);
+      return raw.map(normalizeRoleAssignment);
+    },
+    enabled: !!identity && !isFetching,
+  });
+}
+
 export function useAssignRole() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -322,8 +599,12 @@ export function useAssignRole() {
       roleType: string;
       orgNodeId: string | null;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.assignRole(userId, toBackendRoleType(roleType), orgNodeId);
+      const actor = await getExtendedActor(identity);
+      return actor.assignRole(
+        userId,
+        toBackendRoleType(roleType),
+        toOptText(orgNodeId),
+      );
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["roleAssignments"] });
@@ -333,11 +614,11 @@ export function useAssignRole() {
 }
 
 export function useDeactivateRoleAssignment() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (assignmentId: string) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.deactivateRoleAssignment(assignmentId);
     },
     onSuccess: () => {
@@ -348,32 +629,26 @@ export function useDeactivateRoleAssignment() {
 
 // ─── KPI Years ────────────────────────────────────────────────────────────────
 
-function normalizeKPIYear(raw: KPIYear): KPIYear {
-  return {
-    ...raw,
-    status: fromCandidVariant<Variant_Open_Closed>(raw.status),
-  };
-}
-
 export function useListKPIYears() {
-  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const { isFetching } = useActor();
   return useQuery<KPIYear[]>({
     queryKey: ["kpiYears"],
     queryFn: async () => {
-      if (!actor) return [];
+      const actor = await getExtendedActor(identity);
       const raw = await actor.listKPIYears();
       return raw.map(normalizeKPIYear);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!identity && !isFetching,
   });
 }
 
 export function useCreateKPIYear() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (year: bigint) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.createKPIYear(year);
     },
     onSuccess: () => {
@@ -383,7 +658,7 @@ export function useCreateKPIYear() {
 }
 
 export function useSetKPIYearStatus() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -393,7 +668,7 @@ export function useSetKPIYearStatus() {
       kpiYearId: string;
       newStatus: "OPEN" | "CLOSED";
     }) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.setKPIYearStatus(kpiYearId, newStatus);
     },
     onSuccess: () => {
@@ -405,23 +680,25 @@ export function useSetKPIYearStatus() {
 // ─── BSC Aspects ──────────────────────────────────────────────────────────────
 
 export function useListBSCAspects() {
-  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const { isFetching } = useActor();
   return useQuery<BSCAspect[]>({
     queryKey: ["bscAspects"],
     queryFn: async () => {
-      if (!actor) return [];
-      return actor.listBSCAspects();
+      const actor = await getExtendedActor(identity);
+      const raw = await actor.listBSCAspects();
+      return raw.map(normalizeBSCAspect);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!identity && !isFetching,
   });
 }
 
 export function useCreateBSCAspect() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (aspectName: string) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.createBSCAspect(aspectName);
     },
     onSuccess: () => {
@@ -431,7 +708,7 @@ export function useCreateBSCAspect() {
 }
 
 export function useUpdateBSCAspect() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -441,7 +718,7 @@ export function useUpdateBSCAspect() {
       aspectId: string;
       aspectName: string;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.updateBSCAspect(aspectId, aspectName);
     },
     onSuccess: () => {
@@ -453,19 +730,21 @@ export function useUpdateBSCAspect() {
 // ─── Strategic Objectives ─────────────────────────────────────────────────────
 
 export function useListStrategicObjectives(_bscAspectId?: string) {
-  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const { isFetching } = useActor();
   return useQuery<StrategicObjective[]>({
     queryKey: ["strategicObjectives"],
     queryFn: async () => {
-      if (!actor) return [];
-      return actor.listStrategicObjectives(null);
+      const actor = await getExtendedActor(identity);
+      const raw = await actor.listStrategicObjectives([]);
+      return raw.map(normalizeStrategicObjective);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!identity && !isFetching,
   });
 }
 
 export function useCreateStrategicObjective() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -475,7 +754,7 @@ export function useCreateStrategicObjective() {
       bscAspectId: string;
       objectiveName: string;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.createStrategicObjective(bscAspectId, objectiveName);
     },
     onSuccess: () => {
@@ -485,7 +764,7 @@ export function useCreateStrategicObjective() {
 }
 
 export function useUpdateStrategicObjective() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -495,7 +774,7 @@ export function useUpdateStrategicObjective() {
       objectiveId: string;
       objectiveName: string;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.updateStrategicObjective(objectiveId, objectiveName);
     },
     onSuccess: () => {
@@ -505,19 +784,6 @@ export function useUpdateStrategicObjective() {
 }
 
 // ─── KPIs ─────────────────────────────────────────────────────────────────────
-
-function normalizeKPI(raw: KPI): KPI {
-  return {
-    ...raw,
-    kpiStatus: fromCandidVariant<Variant_Approved_Draft_Submitted_Revised>(
-      raw.kpiStatus,
-    ),
-    kpiPeriod:
-      fromCandidVariant<Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual>(
-        raw.kpiPeriod,
-      ),
-  };
-}
 
 // Maps frontend period values to backend-expected strings
 function toBackendPeriod(period: string): string {
@@ -542,7 +808,8 @@ export function useListKPIs(
   orgNodeId?: string,
   statusFilter?: string,
 ) {
-  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const { isFetching } = useActor();
   return useQuery<KPI[]>({
     queryKey: [
       "kpis",
@@ -551,15 +818,15 @@ export function useListKPIs(
       statusFilter ?? null,
     ],
     queryFn: async () => {
-      if (!actor) return [];
+      const actor = await getExtendedActor(identity);
       const raw = await actor.listKPIs(
-        kpiYearId ?? null,
-        orgNodeId ?? null,
-        statusFilter ?? null,
+        kpiYearId ? [kpiYearId] : [],
+        orgNodeId ? [orgNodeId] : [],
+        statusFilter ? [statusFilter] : [],
       );
       return raw.map(normalizeKPI);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!identity && !isFetching,
   });
 }
 
@@ -586,8 +853,8 @@ export function useCreateKPI() {
       kpiWeight: number;
       kpiScoreParameter?: string;
     }) => {
-      const extActor = await getExtendedActor(identity);
-      return extActor.createKPI(
+      const actor = await getExtendedActor(identity);
+      return actor.createKPI(
         kpiYearId,
         bscAspectId,
         strategicObjectiveId,
@@ -625,8 +892,8 @@ export function useUpdateKPI() {
       kpiWeight: number;
       kpiScoreParameter?: string;
     }) => {
-      const extActor = await getExtendedActor(identity);
-      await extActor.updateKPI(
+      const actor = await getExtendedActor(identity);
+      await actor.updateKPI(
         kpiId,
         bscAspectId,
         strategicObjectiveId,
@@ -647,8 +914,8 @@ export function useDeleteKPI() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (kpiId: string) => {
-      const extActor = await getExtendedActor(identity);
-      await extActor.deleteKPI(kpiId);
+      const actor = await getExtendedActor(identity);
+      await actor.deleteKPI(kpiId);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["kpis"] });
@@ -657,12 +924,46 @@ export function useDeleteKPI() {
 }
 
 export function useSubmitKPI() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (kpiId: string) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.submitKPI(kpiId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["kpis"] });
+    },
+  });
+}
+
+export function useApproveKPI() {
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (kpiId: string) => {
+      const actor = await getExtendedActor(identity);
+      return actor.approveKPI(kpiId);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["kpis"] });
+    },
+  });
+}
+
+export function useRejectKPI() {
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      kpiId,
+      revisionNotes,
+    }: {
+      kpiId: string;
+      revisionNotes: string;
+    }) => {
+      const actor = await getExtendedActor(identity);
+      return actor.rejectKPI(kpiId, revisionNotes);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["kpis"] });
@@ -678,8 +979,8 @@ export function useGetKPIScoreParameter(kpiId: string) {
     queryKey: ["kpiScoreParameter", kpiId],
     queryFn: async () => {
       if (!kpiId) return "";
-      const extActor = await getExtendedActor(identity);
-      const result = await extActor.getKPIScoreParameter(kpiId);
+      const actor = await getExtendedActor(identity);
+      const result = await actor.getKPIScoreParameter(kpiId);
       return result[0] ?? "";
     },
     enabled: !!kpiId && !!identity,
@@ -700,12 +1001,12 @@ export function useSaveKPITargets() {
       kpiId: string;
       targets: number[];
     }) => {
-      const extActor = await getExtendedActor(identity);
+      const actor = await getExtendedActor(identity);
       // targets is an array of values ordered by periodIndex (1-based)
       const tuples: Array<[bigint, number]> = targets.map(
         (v, i) => [BigInt(i + 1), v] as [bigint, number],
       );
-      await extActor.saveKPITargets(kpiId, tuples);
+      await actor.saveKPITargets(kpiId, tuples);
     },
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({
@@ -721,8 +1022,8 @@ export function useGetKPITargets(kpiId: string) {
     queryKey: ["kpiTargets", kpiId],
     queryFn: async () => {
       if (!kpiId) return [];
-      const extActor = await getExtendedActor(identity);
-      const raw = await extActor.getKPITargets(kpiId);
+      const actor = await getExtendedActor(identity);
+      const raw = await actor.getKPITargets(kpiId);
       // Normalize periodIndex to always be bigint regardless of how
       // the Candid decoder returns it (bigint or number).
       return raw.map((t) => ({
@@ -759,8 +1060,8 @@ export function useUpdateKPIProgress() {
       achievement: number;
       score: number;
     }) => {
-      const extActor = await getExtendedActor(identity);
-      await extActor.updateKPIProgress(
+      const actor = await getExtendedActor(identity);
+      await actor.updateKPIProgress(
         kpiId,
         BigInt(periodIndex),
         achievement,
@@ -782,8 +1083,8 @@ export function useGetKPIProgressList(kpiId: string) {
     queryKey: ["kpiProgressList", kpiId],
     queryFn: async () => {
       if (!kpiId) return [];
-      const extActor = await getExtendedActor(identity);
-      const raw = await extActor.getKPIProgressList(kpiId);
+      const actor = await getExtendedActor(identity);
+      const raw = await actor.getKPIProgressList(kpiId);
       // Normalize periodIndex to bigint for consistent comparisons
       return raw.map((r) => ({
         ...r,
@@ -829,36 +1130,25 @@ export function useGetKPIProgressData(kpiId: string) {
 
 // ─── OKRs ─────────────────────────────────────────────────────────────────────
 
-function normalizeOKR(raw: OKR): OKR {
-  return {
-    ...raw,
-    okrStatus:
-      fromCandidVariant<Variant_Approved_Draft_Rejected_Submitted_Revised>(
-        raw.okrStatus,
-      ),
-    okrAspect: fromCandidVariant<Variant_People_Tools_Process>(raw.okrAspect),
-    realization:
-      fromCandidVariant<Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending>(
-        raw.realization,
-      ),
-  };
-}
-
 export function useListOKRs(kpiYearId?: string, statusFilter?: string) {
-  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const { isFetching } = useActor();
   return useQuery<OKR[]>({
     queryKey: ["okrs", kpiYearId ?? null, statusFilter ?? null],
     queryFn: async () => {
-      if (!actor) return [];
-      const raw = await actor.listOKRs(kpiYearId ?? null, statusFilter ?? null);
+      const actor = await getExtendedActor(identity);
+      const raw = await actor.listOKRs(
+        kpiYearId ? [kpiYearId] : [],
+        statusFilter ? [statusFilter] : [],
+      );
       return raw.map(normalizeOKR);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!identity && !isFetching,
   });
 }
 
 export function useCreateOKR() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -876,7 +1166,7 @@ export function useCreateOKR() {
       targetValue: number;
       initialTargetDate: string;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.createOKR(
         kpiYearId,
         okrAspect,
@@ -893,7 +1183,7 @@ export function useCreateOKR() {
 }
 
 export function useUpdateOKR() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -913,7 +1203,7 @@ export function useUpdateOKR() {
       initialTargetDate: string;
       revisedTargetDate: string | null;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.updateOKR(
         okrId,
         okrAspect,
@@ -921,7 +1211,7 @@ export function useUpdateOKR() {
         keyResult,
         targetValue,
         initialTargetDate,
-        revisedTargetDate,
+        toOptText(revisedTargetDate),
       );
     },
     onSuccess: () => {
@@ -931,11 +1221,11 @@ export function useUpdateOKR() {
 }
 
 export function useSubmitOKR() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (okrId: string) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.submitOKR(okrId);
     },
     onSuccess: () => {
@@ -945,11 +1235,11 @@ export function useSubmitOKR() {
 }
 
 export function useDeleteOKR() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (okrId: string) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.deleteOKR(okrId);
     },
     onSuccess: () => {
@@ -959,7 +1249,7 @@ export function useDeleteOKR() {
 }
 
 export function useUpdateOKRProgress() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -971,8 +1261,8 @@ export function useUpdateOKRProgress() {
       realization: string;
       notes: string | null;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.updateOKRProgress(okrId, realization, notes);
+      const actor = await getExtendedActor(identity);
+      return actor.updateOKRProgress(okrId, realization, toOptText(notes));
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["okrs"] });
@@ -980,28 +1270,12 @@ export function useUpdateOKRProgress() {
   });
 }
 
-// ─── Approval Actions ─────────────────────────────────────────────────────────
-
-export function useApproveKPI() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (kpiId: string) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.approveKPI(kpiId);
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["kpis"] });
-    },
-  });
-}
-
 export function useApproveOKR() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (okrId: string) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.approveOKR(okrId);
     },
     onSuccess: () => {
@@ -1011,7 +1285,7 @@ export function useApproveOKR() {
 }
 
 export function useRejectOKR() {
-  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -1021,7 +1295,7 @@ export function useRejectOKR() {
       okrId: string;
       revisionNotes: string;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
+      const actor = await getExtendedActor(identity);
       return actor.rejectOKR(okrId, revisionNotes);
     },
     onSuccess: () => {
@@ -1030,22 +1304,64 @@ export function useRejectOKR() {
   });
 }
 
-export function useRejectKPI() {
-  const { actor } = useActor();
+// ─── Company Info ─────────────────────────────────────────────────────────────
+
+export function useGetCompanyInfo() {
+  const { identity } = useInternetIdentity();
+  const { isFetching } = useActor();
+  return useQuery({
+    queryKey: ["companyInfo"],
+    queryFn: async () => {
+      const actor = await getExtendedActor(identity);
+      const result = await actor.getCompanyInfo();
+      return result.length > 0 ? result[0] : null;
+    },
+    enabled: !!identity && !isFetching,
+    staleTime: 0,
+  });
+}
+
+export function useUpdateCompanyName() {
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      kpiId,
-      revisionNotes,
-    }: {
-      kpiId: string;
-      revisionNotes: string;
-    }) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.rejectKPI(kpiId, revisionNotes);
+    mutationFn: async (newName: string) => {
+      const actor = await getExtendedActor(identity);
+      return actor.updateCompanyName(newName);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["companyInfo"] });
+      void queryClient.invalidateQueries({ queryKey: ["myProfile"] });
+    },
+  });
+}
+
+export function useDeactivateCompany() {
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const actor = await getExtendedActor(identity);
+      return actor.deactivateCompany();
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["companyInfo"] });
+      void queryClient.invalidateQueries({ queryKey: ["myProfile"] });
+    },
+  });
+}
+
+export function useResetYearProgressData() {
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (kpiYearId: string) => {
+      const actor = await getExtendedActor(identity);
+      return actor.resetYearProgressData(kpiYearId);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["kpis"] });
+      void queryClient.invalidateQueries({ queryKey: ["okrs"] });
     },
   });
 }

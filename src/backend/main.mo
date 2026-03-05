@@ -2188,4 +2188,106 @@ actor {
     filtered;
   };
 
+  public query ({ caller }) func getCompanyInfo() : async ?Company {
+    let user = requireCallerUser(caller);
+    companies.get(user.companyId);
+  };
+
+  public shared ({ caller }) func updateCompanyName(newName : Text) : async () {
+    let user = requireCompanyAdmin(caller);
+
+    if (newName == "") {
+      Runtime.trap("Company name cannot be empty");
+    };
+
+    switch (companies.get(user.companyId)) {
+      case (null) { Runtime.trap("Company not found") };
+      case (?company) {
+        let updatedCompany : Company = {
+          companyId = company.companyId;
+          companyName = newName;
+          activeStatus = company.activeStatus;
+          createdAt = company.createdAt;
+          createdBy = company.createdBy;
+        };
+        companies.add(company.companyId, updatedCompany);
+        logAudit(company.companyId, "Company", company.companyId, "UPDATE_NAME", caller);
+      };
+    };
+  };
+
+  public shared ({ caller }) func deactivateCompany() : async () {
+    let user = requireCompanyAdmin(caller);
+
+    switch (companies.get(user.companyId)) {
+      case (null) { Runtime.trap("Company not found") };
+      case (?company) {
+        let updatedCompany : Company = {
+          companyId = company.companyId;
+          companyName = company.companyName;
+          activeStatus = #Inactive;
+          createdAt = company.createdAt;
+          createdBy = company.createdBy;
+        };
+        companies.add(company.companyId, updatedCompany);
+        logAudit(company.companyId, "Company", company.companyId, "DEACTIVATE", caller);
+      };
+    };
+  };
+
+  public shared ({ caller }) func resetYearProgressData(kpiYearId : Text) : async () {
+    let user = requireCompanyAdmin(caller);
+
+    switch (kpiYears.get(kpiYearId)) {
+      case (null) { Runtime.trap("KPI Year not found") };
+      case (?kpiYear) {
+        if (kpiYear.companyId != user.companyId) {
+          Runtime.trap("Cannot reset progress for other company's KPIs");
+        };
+
+        // Remove all KPI progress for this year and company
+        let kpiIdsForYear = kpis.values().toArray().filter(func(k) { k.companyId == kpiYear.companyId and k.kpiYearId == kpiYearId }).map(func(k) { k.kpiId });
+
+        for (kpiId in kpiIdsForYear.values()) {
+          // Remove all progress records for this KPI
+          let progressEntries = kpiProgress.entries().toArray().filter(func((_, p)) { p.kpiId == kpiId });
+          progressEntries.forEach(func((progressId, _)) { kpiProgress.remove(progressId) });
+        };
+
+        // Update all OKRs for this company and year
+        let okrIdsForYear = okrs.values().toArray().filter(func(o) { o.companyId == kpiYear.companyId and o.kpiYearId == kpiYearId }).map(func(o) { o.okrId });
+
+        for (okrId in okrIdsForYear.values()) {
+          switch (okrs.get(okrId)) {
+            case (null) {};
+            case (?okr) {
+              let updatedOKR : OKR = {
+                okrId = okr.okrId;
+                companyId = okr.companyId;
+                kpiYearId = okr.kpiYearId;
+                ownerRoleAssignmentId = okr.ownerRoleAssignmentId;
+                approver1RoleAssignmentId = okr.approver1RoleAssignmentId;
+                approver2RoleAssignmentId = okr.approver2RoleAssignmentId;
+                okrStatus = okr.okrStatus;
+                okrAspect = okr.okrAspect;
+                objective = okr.objective;
+                keyResult = okr.keyResult;
+                targetValue = okr.targetValue;
+                initialTargetDate = okr.initialTargetDate;
+                revisedTargetDate = okr.revisedTargetDate;
+                realization = #Backlog;
+                notes = null;
+                createdAt = okr.createdAt;
+                createdBy = okr.createdBy;
+              };
+              okrs.add(okrId, updatedOKR);
+            };
+          };
+        };
+
+        logAudit(user.companyId, "Company", kpiYearId, "RESET_YEAR_PROGRESS", caller);
+      };
+    };
+  };
+
 };

@@ -89,138 +89,12 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface RoleAssignment {
-    orgNodeId?: OrgNodeId;
-    roleType: Variant_DivisionHead_Director_PresidentDirector_DepartmentHead_CompanyAdmin;
-    assignedAt: bigint;
-    assignedBy: Principal;
-    userId: UserId;
-    activeStatus: boolean;
-    ultimateParentId?: string;
-    assignmentId: RoleAssignmentId;
-    parentId?: string;
-    grandParentId?: string;
-    companyId: CompanyId;
-}
-export type RoleAssignmentId = string;
-export type RegistrationCode = string;
-export interface KPIYear {
-    status: Variant_Open_Closed;
-    kpiYearId: KPIYearId;
-    createdAt: bigint;
-    createdBy: Principal;
-    year: bigint;
-    companyId: CompanyId;
-}
-export interface StrategicObjective {
-    createdAt: bigint;
-    createdBy: Principal;
-    objectiveId: StrategicObjectiveId;
-    bscAspectId: BSCAspectId;
-    objectiveName: string;
-    companyId: CompanyId;
-}
-export type StrategicObjectiveId = string;
-export interface User {
-    status: Variant_Inactive_Active_Unassigned;
-    userId: UserId;
-    createdAt: bigint;
-    createdBy: Principal;
-    fullName: string;
-    emailAddress?: string;
-    registrationCodeUsed?: string;
-    principalId: Principal;
-    companyId: CompanyId;
-}
-export interface KPI {
-    strategicObjectiveId: string;
-    kpiMeasurement: string;
-    kpiYearId: string;
-    createdAt: bigint;
-    createdBy: Principal;
-    ownerRoleAssignmentId: string;
-    kpiWeight: number;
-    kpiStatus: Variant_Approved_Draft_Submitted_Revised;
-    updatedAt: bigint;
-    updatedBy: Principal;
-    approverUserId?: string;
-    kpiPeriod: Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual;
-    bscAspectId: string;
-    revisionNotes?: string;
-    kpiId: KPIId;
-    organizationNodeId: string;
-    companyId: CompanyId;
-}
-export type KPIYearId = string;
-export interface BSCAspect {
-    createdAt: bigint;
-    createdBy: Principal;
-    aspectId: BSCAspectId;
-    aspectName: string;
-    companyId: CompanyId;
-}
-export interface AuditLog {
-    action: string;
-    auditId: AuditId;
-    entityId: string;
-    performedBy: Principal;
-    timestamp: bigint;
-    entityType: string;
-    companyId: CompanyId;
-}
-export interface MyProfile {
-    status: Variant_Inactive_Active_Unassigned;
-    userId: UserId;
-    fullName: string;
-    principalId: Principal;
-    roles: Array<RoleAssignment>;
-    companyId: CompanyId;
-}
-export type BSCAspectId = string;
-export type AuditId = string;
-export type UserId = string;
 export type CompanyId = string;
-export type KPIId = string;
-export interface OrgNode {
-    nodeId: OrgNodeId;
-    parentNodeId?: OrgNodeId;
+export interface Company {
     createdAt: bigint;
     createdBy: Principal;
-    updatedAt: bigint;
-    updatedBy: Principal;
-    nodeName: string;
-    nodeType: Variant_Division_Director_PresidentDirector_Department;
-    companyId: CompanyId;
-}
-export type OrgNodeId = string;
-export type OKRId = string;
-export interface RegistrationCodeRecord {
-    code: string;
-    createdAt: bigint;
-    createdBy: Principal;
-    isActive: boolean;
-    companyId: string;
-}
-export interface UserProfile {
-    name: string;
-}
-export interface OKR {
-    initialTargetDate: string;
-    okrStatus: Variant_Approved_Draft_Rejected_Submitted_Revised;
-    okrId: OKRId;
-    approver2RoleAssignmentId?: string;
-    kpiYearId: KPIYearId;
-    objective: string;
-    createdAt: bigint;
-    createdBy: Principal;
-    realization: Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending;
-    ownerRoleAssignmentId: string;
-    okrAspect: Variant_People_Tools_Process;
-    revisedTargetDate?: string;
-    notes?: string;
-    keyResult: string;
-    approver1RoleAssignmentId?: string;
-    targetValue: number;
+    activeStatus: Variant_Inactive_Active;
+    companyName: string;
     companyId: CompanyId;
 }
 export enum UserRole {
@@ -228,113 +102,21 @@ export enum UserRole {
     user = "user",
     guest = "guest"
 }
-export enum Variant_Approved_Draft_Rejected_Submitted_Revised {
-    Approved = "Approved",
-    Draft = "Draft",
-    Rejected = "Rejected",
-    Submitted = "Submitted",
-    Revised = "Revised"
-}
-export enum Variant_Approved_Draft_Submitted_Revised {
-    Approved = "Approved",
-    Draft = "Draft",
-    Submitted = "Submitted",
-    Revised = "Revised"
-}
-export enum Variant_DivisionHead_Director_PresidentDirector_DepartmentHead_CompanyAdmin {
-    DivisionHead = "DivisionHead",
-    Director = "Director",
-    PresidentDirector = "PresidentDirector",
-    DepartmentHead = "DepartmentHead",
-    CompanyAdmin = "CompanyAdmin"
-}
-export enum Variant_Division_Director_PresidentDirector_Department {
-    Division = "Division",
-    Director = "Director",
-    PresidentDirector = "PresidentDirector",
-    Department = "Department"
-}
-export enum Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending {
-    Done = "Done",
-    OnProgress = "OnProgress",
-    Backlog = "Backlog",
-    CarriedForNextYear = "CarriedForNextYear",
-    Pending = "Pending"
-}
-export enum Variant_Inactive_Active_Unassigned {
+export enum Variant_Inactive_Active {
     Inactive = "Inactive",
-    Active = "Active",
-    Unassigned = "Unassigned"
-}
-export enum Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual {
-    OneTime = "OneTime",
-    Quarterly = "Quarterly",
-    Monthly = "Monthly",
-    SemiAnnual = "SemiAnnual",
-    Annual = "Annual"
-}
-export enum Variant_Open_Closed {
-    Open = "Open",
-    Closed = "Closed"
-}
-export enum Variant_People_Tools_Process {
-    People = "People",
-    Tools = "Tools",
-    Process = "Process"
+    Active = "Active"
 }
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
-    approveKPI(kpiId: KPIId): Promise<void>;
-    approveOKR(okrId: OKRId): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    assignRole(userId: UserId, roleType: string, organizationNodeId: string | null): Promise<void>;
-    createBSCAspect(aspectName: string): Promise<BSCAspectId>;
-    createCompany(companyName: string, adminFullName: string, email: string | null): Promise<CompanyId>;
-    createKPI(kpiYearId: string, bscAspectId: string, strategicObjectiveId: string, organizationNodeId: string, kpiMeasurement: string, kpiPeriod: string, kpiWeight: number): Promise<KPIId>;
-    createKPIYear(year: bigint): Promise<KPIYearId>;
-    createOKR(kpiYearId: string, okrAspect: string, objective: string, keyResult: string, targetValue: number, initialTargetDate: string): Promise<OKRId>;
-    createOrganizationNode(nodeType: string, nodeName: string, parentNodeId: string | null): Promise<OrgNodeId>;
-    createStrategicObjective(bscAspectId: BSCAspectId, objectiveName: string): Promise<StrategicObjectiveId>;
-    deactivateRegistrationCode(code: string): Promise<void>;
-    deactivateRoleAssignment(assignmentId: RoleAssignmentId): Promise<void>;
-    deleteKPI(kpiId: KPIId): Promise<void>;
-    deleteOKR(okrId: OKRId): Promise<void>;
-    generateRegistrationCode(): Promise<RegistrationCode>;
-    getAuditLogs(entityType: string | null, entityId: string | null): Promise<Array<AuditLog>>;
-    getCallerUserProfile(): Promise<UserProfile | null>;
+    deactivateCompany(): Promise<void>;
     getCallerUserRole(): Promise<UserRole>;
-    getKPI(kpiId: KPIId): Promise<KPI | null>;
-    getMyProfile(): Promise<MyProfile | null>;
-    getOKR(okrId: OKRId): Promise<OKR | null>;
-    getUserById(userId: UserId): Promise<User | null>;
-    getUserProfile(user: Principal): Promise<UserProfile | null>;
+    getCompanyInfo(): Promise<Company | null>;
     isCallerAdmin(): Promise<boolean>;
-    joinCompany(code: string, fullName: string, email: string | null): Promise<CompanyId>;
-    listBSCAspects(): Promise<Array<BSCAspect>>;
-    listKPIYears(): Promise<Array<KPIYear>>;
-    listKPIs(kpiYearId: string | null, organizationNodeId: string | null, statusFilter: string | null): Promise<Array<KPI>>;
-    listOKRs(kpiYearId: string | null, statusFilter: string | null): Promise<Array<OKR>>;
-    listOrganizationNodes(): Promise<Array<OrgNode>>;
-    listRegistrationCodes(): Promise<Array<RegistrationCodeRecord>>;
-    listRoleAssignments(userId: UserId | null): Promise<Array<RoleAssignment>>;
-    listStrategicObjectives(bscAspectId: BSCAspectId | null): Promise<Array<StrategicObjective>>;
-    listUsers(): Promise<Array<User>>;
-    rejectKPI(kpiId: KPIId, revisionNotes: string): Promise<void>;
-    rejectOKR(okrId: OKRId, revisionNotes: string): Promise<void>;
-    saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    setKPIYearStatus(kpiYearId: KPIYearId, newStatus: string): Promise<void>;
-    submitKPI(kpiId: KPIId): Promise<void>;
-    submitOKR(okrId: OKRId): Promise<void>;
-    updateBSCAspect(aspectId: BSCAspectId, aspectName: string): Promise<void>;
-    updateKPI(kpiId: KPIId, bscAspectId: string, strategicObjectiveId: string, kpiMeasurement: string, kpiPeriod: string, kpiWeight: number): Promise<void>;
-    updateKPIProgress(kpiId: KPIId, periodIndex: bigint, achievement: number): Promise<void>;
-    updateOKR(okrId: OKRId, okrAspect: string, objective: string, keyResult: string, targetValue: number, initialTargetDate: string, revisedTargetDate: string | null): Promise<void>;
-    updateOKRProgress(okrId: OKRId, realization: string, notes: string | null): Promise<void>;
-    updateOrganizationNode(nodeId: OrgNodeId, nodeName: string): Promise<void>;
-    updateStrategicObjective(objectiveId: StrategicObjectiveId, objectiveName: string): Promise<void>;
-    updateUserStatus(userId: UserId, newStatus: string): Promise<void>;
+    resetYearProgressData(kpiYearId: string): Promise<void>;
+    updateCompanyName(newName: string): Promise<void>;
 }
-import type { BSCAspectId as _BSCAspectId, CompanyId as _CompanyId, KPI as _KPI, KPIId as _KPIId, KPIYear as _KPIYear, KPIYearId as _KPIYearId, MyProfile as _MyProfile, OKR as _OKR, OKRId as _OKRId, OrgNode as _OrgNode, OrgNodeId as _OrgNodeId, RoleAssignment as _RoleAssignment, RoleAssignmentId as _RoleAssignmentId, User as _User, UserId as _UserId, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
+import type { Company as _Company, CompanyId as _CompanyId, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -348,34 +130,6 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor._initializeAccessControlWithSecret(arg0);
-            return result;
-        }
-    }
-    async approveKPI(arg0: KPIId): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.approveKPI(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.approveKPI(arg0);
-            return result;
-        }
-    }
-    async approveOKR(arg0: OKRId): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.approveOKR(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.approveOKR(arg0);
             return result;
         }
     }
@@ -393,298 +147,46 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async assignRole(arg0: UserId, arg1: string, arg2: string | null): Promise<void> {
+    async deactivateCompany(): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.assignRole(arg0, arg1, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2));
+                const result = await this.actor.deactivateCompany();
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.assignRole(arg0, arg1, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2));
+            const result = await this.actor.deactivateCompany();
             return result;
-        }
-    }
-    async createBSCAspect(arg0: string): Promise<BSCAspectId> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.createBSCAspect(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.createBSCAspect(arg0);
-            return result;
-        }
-    }
-    async createCompany(arg0: string, arg1: string, arg2: string | null): Promise<CompanyId> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.createCompany(arg0, arg1, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2));
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.createCompany(arg0, arg1, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2));
-            return result;
-        }
-    }
-    async createKPI(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string, arg6: number): Promise<KPIId> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.createKPI(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.createKPI(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
-            return result;
-        }
-    }
-    async createKPIYear(arg0: bigint): Promise<KPIYearId> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.createKPIYear(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.createKPIYear(arg0);
-            return result;
-        }
-    }
-    async createOKR(arg0: string, arg1: string, arg2: string, arg3: string, arg4: number, arg5: string): Promise<OKRId> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.createOKR(arg0, arg1, arg2, arg3, arg4, arg5);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.createOKR(arg0, arg1, arg2, arg3, arg4, arg5);
-            return result;
-        }
-    }
-    async createOrganizationNode(arg0: string, arg1: string, arg2: string | null): Promise<OrgNodeId> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.createOrganizationNode(arg0, arg1, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2));
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.createOrganizationNode(arg0, arg1, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2));
-            return result;
-        }
-    }
-    async createStrategicObjective(arg0: BSCAspectId, arg1: string): Promise<StrategicObjectiveId> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.createStrategicObjective(arg0, arg1);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.createStrategicObjective(arg0, arg1);
-            return result;
-        }
-    }
-    async deactivateRegistrationCode(arg0: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.deactivateRegistrationCode(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.deactivateRegistrationCode(arg0);
-            return result;
-        }
-    }
-    async deactivateRoleAssignment(arg0: RoleAssignmentId): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.deactivateRoleAssignment(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.deactivateRoleAssignment(arg0);
-            return result;
-        }
-    }
-    async deleteKPI(arg0: KPIId): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.deleteKPI(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.deleteKPI(arg0);
-            return result;
-        }
-    }
-    async deleteOKR(arg0: OKRId): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.deleteOKR(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.deleteOKR(arg0);
-            return result;
-        }
-    }
-    async generateRegistrationCode(): Promise<RegistrationCode> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.generateRegistrationCode();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.generateRegistrationCode();
-            return result;
-        }
-    }
-    async getAuditLogs(arg0: string | null, arg1: string | null): Promise<Array<AuditLog>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getAuditLogs(to_candid_opt_n3(this._uploadFile, this._downloadFile, arg0), to_candid_opt_n3(this._uploadFile, this._downloadFile, arg1));
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getAuditLogs(to_candid_opt_n3(this._uploadFile, this._downloadFile, arg0), to_candid_opt_n3(this._uploadFile, this._downloadFile, arg1));
-            return result;
-        }
-    }
-    async getCallerUserProfile(): Promise<UserProfile | null> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n4(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n4(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n5(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n3(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n5(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n3(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getKPI(arg0: KPIId): Promise<KPI | null> {
+    async getCompanyInfo(): Promise<Company | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.getKPI(arg0);
-                return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.getCompanyInfo();
+                return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getKPI(arg0);
-            return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getMyProfile(): Promise<MyProfile | null> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getMyProfile();
-                return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getMyProfile();
-            return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getOKR(arg0: OKRId): Promise<OKR | null> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getOKR(arg0);
-                return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getOKR(arg0);
-            return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getUserById(arg0: UserId): Promise<User | null> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getUserById(arg0);
-                return from_candid_opt_n28(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getUserById(arg0);
-            return from_candid_opt_n28(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n4(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n4(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.getCompanyInfo();
+            return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -701,833 +203,70 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async joinCompany(arg0: string, arg1: string, arg2: string | null): Promise<CompanyId> {
+    async resetYearProgressData(arg0: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.joinCompany(arg0, arg1, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2));
+                const result = await this.actor.resetYearProgressData(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.joinCompany(arg0, arg1, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2));
+            const result = await this.actor.resetYearProgressData(arg0);
             return result;
         }
     }
-    async listBSCAspects(): Promise<Array<BSCAspect>> {
+    async updateCompanyName(arg0: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.listBSCAspects();
+                const result = await this.actor.updateCompanyName(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.listBSCAspects();
-            return result;
-        }
-    }
-    async listKPIYears(): Promise<Array<KPIYear>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.listKPIYears();
-                return from_candid_vec_n31(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.listKPIYears();
-            return from_candid_vec_n31(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async listKPIs(arg0: string | null, arg1: string | null, arg2: string | null): Promise<Array<KPI>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.listKPIs(to_candid_opt_n3(this._uploadFile, this._downloadFile, arg0), to_candid_opt_n3(this._uploadFile, this._downloadFile, arg1), to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2));
-                return from_candid_vec_n35(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.listKPIs(to_candid_opt_n3(this._uploadFile, this._downloadFile, arg0), to_candid_opt_n3(this._uploadFile, this._downloadFile, arg1), to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2));
-            return from_candid_vec_n35(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async listOKRs(arg0: string | null, arg1: string | null): Promise<Array<OKR>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.listOKRs(to_candid_opt_n3(this._uploadFile, this._downloadFile, arg0), to_candid_opt_n3(this._uploadFile, this._downloadFile, arg1));
-                return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.listOKRs(to_candid_opt_n3(this._uploadFile, this._downloadFile, arg0), to_candid_opt_n3(this._uploadFile, this._downloadFile, arg1));
-            return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async listOrganizationNodes(): Promise<Array<OrgNode>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.listOrganizationNodes();
-                return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.listOrganizationNodes();
-            return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async listRegistrationCodes(): Promise<Array<RegistrationCodeRecord>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.listRegistrationCodes();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.listRegistrationCodes();
-            return result;
-        }
-    }
-    async listRoleAssignments(arg0: UserId | null): Promise<Array<RoleAssignment>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.listRoleAssignments(to_candid_opt_n41(this._uploadFile, this._downloadFile, arg0));
-                return from_candid_vec_n17(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.listRoleAssignments(to_candid_opt_n41(this._uploadFile, this._downloadFile, arg0));
-            return from_candid_vec_n17(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async listStrategicObjectives(arg0: BSCAspectId | null): Promise<Array<StrategicObjective>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.listStrategicObjectives(to_candid_opt_n42(this._uploadFile, this._downloadFile, arg0));
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.listStrategicObjectives(to_candid_opt_n42(this._uploadFile, this._downloadFile, arg0));
-            return result;
-        }
-    }
-    async listUsers(): Promise<Array<User>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.listUsers();
-                return from_candid_vec_n43(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.listUsers();
-            return from_candid_vec_n43(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async rejectKPI(arg0: KPIId, arg1: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.rejectKPI(arg0, arg1);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.rejectKPI(arg0, arg1);
-            return result;
-        }
-    }
-    async rejectOKR(arg0: OKRId, arg1: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.rejectOKR(arg0, arg1);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.rejectOKR(arg0, arg1);
-            return result;
-        }
-    }
-    async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.saveCallerUserProfile(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.saveCallerUserProfile(arg0);
-            return result;
-        }
-    }
-    async setKPIYearStatus(arg0: KPIYearId, arg1: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.setKPIYearStatus(arg0, arg1);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.setKPIYearStatus(arg0, arg1);
-            return result;
-        }
-    }
-    async submitKPI(arg0: KPIId): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.submitKPI(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.submitKPI(arg0);
-            return result;
-        }
-    }
-    async submitOKR(arg0: OKRId): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.submitOKR(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.submitOKR(arg0);
-            return result;
-        }
-    }
-    async updateBSCAspect(arg0: BSCAspectId, arg1: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.updateBSCAspect(arg0, arg1);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.updateBSCAspect(arg0, arg1);
-            return result;
-        }
-    }
-    async updateKPI(arg0: KPIId, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.updateKPI(arg0, arg1, arg2, arg3, arg4, arg5);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.updateKPI(arg0, arg1, arg2, arg3, arg4, arg5);
-            return result;
-        }
-    }
-    async updateKPIProgress(arg0: KPIId, arg1: bigint, arg2: number): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.updateKPIProgress(arg0, arg1, arg2);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.updateKPIProgress(arg0, arg1, arg2);
-            return result;
-        }
-    }
-    async updateOKR(arg0: OKRId, arg1: string, arg2: string, arg3: string, arg4: number, arg5: string, arg6: string | null): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.updateOKR(arg0, arg1, arg2, arg3, arg4, arg5, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg6));
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.updateOKR(arg0, arg1, arg2, arg3, arg4, arg5, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg6));
-            return result;
-        }
-    }
-    async updateOKRProgress(arg0: OKRId, arg1: string, arg2: string | null): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.updateOKRProgress(arg0, arg1, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2));
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.updateOKRProgress(arg0, arg1, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2));
-            return result;
-        }
-    }
-    async updateOrganizationNode(arg0: OrgNodeId, arg1: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.updateOrganizationNode(arg0, arg1);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.updateOrganizationNode(arg0, arg1);
-            return result;
-        }
-    }
-    async updateStrategicObjective(arg0: StrategicObjectiveId, arg1: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.updateStrategicObjective(arg0, arg1);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.updateStrategicObjective(arg0, arg1);
-            return result;
-        }
-    }
-    async updateUserStatus(arg0: UserId, arg1: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.updateUserStatus(arg0, arg1);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.updateUserStatus(arg0, arg1);
+            const result = await this.actor.updateCompanyName(arg0);
             return result;
         }
     }
 }
-function from_candid_KPIYear_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _KPIYear): KPIYear {
-    return from_candid_record_n33(_uploadFile, _downloadFile, value);
+function from_candid_Company_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Company): Company {
+    return from_candid_record_n7(_uploadFile, _downloadFile, value);
 }
-function from_candid_KPI_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _KPI): KPI {
-    return from_candid_record_n9(_uploadFile, _downloadFile, value);
+function from_candid_UserRole_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n4(_uploadFile, _downloadFile, value);
 }
-function from_candid_MyProfile_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _MyProfile): MyProfile {
-    return from_candid_record_n15(_uploadFile, _downloadFile, value);
+function from_candid_opt_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Company]): Company | null {
+    return value.length === 0 ? null : from_candid_Company_n6(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_OKR_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _OKR): OKR {
-    return from_candid_record_n24(_uploadFile, _downloadFile, value);
-}
-function from_candid_OrgNode_n38(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _OrgNode): OrgNode {
-    return from_candid_record_n39(_uploadFile, _downloadFile, value);
-}
-function from_candid_RoleAssignment_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _RoleAssignment): RoleAssignment {
-    return from_candid_record_n19(_uploadFile, _downloadFile, value);
-}
-function from_candid_UserRole_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n6(_uploadFile, _downloadFile, value);
-}
-function from_candid_User_n29(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _User): User {
-    return from_candid_record_n30(_uploadFile, _downloadFile, value);
-}
-function from_candid_opt_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
-    return value.length === 0 ? null : value[0];
-}
-function from_candid_opt_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_MyProfile]): MyProfile | null {
-    return value.length === 0 ? null : from_candid_MyProfile_n14(_uploadFile, _downloadFile, value[0]);
-}
-function from_candid_opt_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_OrgNodeId]): OrgNodeId | null {
-    return value.length === 0 ? null : value[0];
-}
-function from_candid_opt_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_OKR]): OKR | null {
-    return value.length === 0 ? null : from_candid_OKR_n23(_uploadFile, _downloadFile, value[0]);
-}
-function from_candid_opt_n28(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_User]): User | null {
-    return value.length === 0 ? null : from_candid_User_n29(_uploadFile, _downloadFile, value[0]);
-}
-function from_candid_opt_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
-    return value.length === 0 ? null : value[0];
-}
-function from_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_KPI]): KPI | null {
-    return value.length === 0 ? null : from_candid_KPI_n8(_uploadFile, _downloadFile, value[0]);
-}
-function from_candid_record_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    status: {
+function from_candid_record_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    createdAt: bigint;
+    createdBy: Principal;
+    activeStatus: {
         Inactive: null;
     } | {
         Active: null;
-    } | {
-        Unassigned: null;
     };
-    userId: _UserId;
-    fullName: string;
-    principalId: Principal;
-    roles: Array<_RoleAssignment>;
+    companyName: string;
     companyId: _CompanyId;
 }): {
-    status: Variant_Inactive_Active_Unassigned;
-    userId: UserId;
-    fullName: string;
-    principalId: Principal;
-    roles: Array<RoleAssignment>;
-    companyId: CompanyId;
-} {
-    return {
-        status: from_candid_variant_n16(_uploadFile, _downloadFile, value.status),
-        userId: value.userId,
-        fullName: value.fullName,
-        principalId: value.principalId,
-        roles: from_candid_vec_n17(_uploadFile, _downloadFile, value.roles),
-        companyId: value.companyId
-    };
-}
-function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    orgNodeId: [] | [_OrgNodeId];
-    roleType: {
-        DivisionHead: null;
-    } | {
-        Director: null;
-    } | {
-        PresidentDirector: null;
-    } | {
-        DepartmentHead: null;
-    } | {
-        CompanyAdmin: null;
-    };
-    assignedAt: bigint;
-    assignedBy: Principal;
-    userId: _UserId;
-    activeStatus: boolean;
-    ultimateParentId: [] | [string];
-    assignmentId: _RoleAssignmentId;
-    parentId: [] | [string];
-    grandParentId: [] | [string];
-    companyId: _CompanyId;
-}): {
-    orgNodeId?: OrgNodeId;
-    roleType: Variant_DivisionHead_Director_PresidentDirector_DepartmentHead_CompanyAdmin;
-    assignedAt: bigint;
-    assignedBy: Principal;
-    userId: UserId;
-    activeStatus: boolean;
-    ultimateParentId?: string;
-    assignmentId: RoleAssignmentId;
-    parentId?: string;
-    grandParentId?: string;
-    companyId: CompanyId;
-} {
-    return {
-        orgNodeId: record_opt_to_undefined(from_candid_opt_n20(_uploadFile, _downloadFile, value.orgNodeId)),
-        roleType: from_candid_variant_n21(_uploadFile, _downloadFile, value.roleType),
-        assignedAt: value.assignedAt,
-        assignedBy: value.assignedBy,
-        userId: value.userId,
-        activeStatus: value.activeStatus,
-        ultimateParentId: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.ultimateParentId)),
-        assignmentId: value.assignmentId,
-        parentId: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.parentId)),
-        grandParentId: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.grandParentId)),
-        companyId: value.companyId
-    };
-}
-function from_candid_record_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    initialTargetDate: string;
-    okrStatus: {
-        Approved: null;
-    } | {
-        Draft: null;
-    } | {
-        Rejected: null;
-    } | {
-        Submitted: null;
-    } | {
-        Revised: null;
-    };
-    okrId: _OKRId;
-    approver2RoleAssignmentId: [] | [string];
-    kpiYearId: _KPIYearId;
-    objective: string;
     createdAt: bigint;
     createdBy: Principal;
-    realization: {
-        Done: null;
-    } | {
-        OnProgress: null;
-    } | {
-        Backlog: null;
-    } | {
-        CarriedForNextYear: null;
-    } | {
-        Pending: null;
-    };
-    ownerRoleAssignmentId: string;
-    okrAspect: {
-        People: null;
-    } | {
-        Tools: null;
-    } | {
-        Process: null;
-    };
-    revisedTargetDate: [] | [string];
-    notes: [] | [string];
-    keyResult: string;
-    approver1RoleAssignmentId: [] | [string];
-    targetValue: number;
-    companyId: _CompanyId;
-}): {
-    initialTargetDate: string;
-    okrStatus: Variant_Approved_Draft_Rejected_Submitted_Revised;
-    okrId: OKRId;
-    approver2RoleAssignmentId?: string;
-    kpiYearId: KPIYearId;
-    objective: string;
-    createdAt: bigint;
-    createdBy: Principal;
-    realization: Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending;
-    ownerRoleAssignmentId: string;
-    okrAspect: Variant_People_Tools_Process;
-    revisedTargetDate?: string;
-    notes?: string;
-    keyResult: string;
-    approver1RoleAssignmentId?: string;
-    targetValue: number;
+    activeStatus: Variant_Inactive_Active;
+    companyName: string;
     companyId: CompanyId;
 } {
     return {
-        initialTargetDate: value.initialTargetDate,
-        okrStatus: from_candid_variant_n25(_uploadFile, _downloadFile, value.okrStatus),
-        okrId: value.okrId,
-        approver2RoleAssignmentId: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.approver2RoleAssignmentId)),
-        kpiYearId: value.kpiYearId,
-        objective: value.objective,
         createdAt: value.createdAt,
         createdBy: value.createdBy,
-        realization: from_candid_variant_n26(_uploadFile, _downloadFile, value.realization),
-        ownerRoleAssignmentId: value.ownerRoleAssignmentId,
-        okrAspect: from_candid_variant_n27(_uploadFile, _downloadFile, value.okrAspect),
-        revisedTargetDate: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.revisedTargetDate)),
-        notes: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.notes)),
-        keyResult: value.keyResult,
-        approver1RoleAssignmentId: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.approver1RoleAssignmentId)),
-        targetValue: value.targetValue,
+        activeStatus: from_candid_variant_n8(_uploadFile, _downloadFile, value.activeStatus),
+        companyName: value.companyName,
         companyId: value.companyId
     };
 }
-function from_candid_record_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    status: {
-        Inactive: null;
-    } | {
-        Active: null;
-    } | {
-        Unassigned: null;
-    };
-    userId: _UserId;
-    createdAt: bigint;
-    createdBy: Principal;
-    fullName: string;
-    emailAddress: [] | [string];
-    registrationCodeUsed: [] | [string];
-    principalId: Principal;
-    companyId: _CompanyId;
-}): {
-    status: Variant_Inactive_Active_Unassigned;
-    userId: UserId;
-    createdAt: bigint;
-    createdBy: Principal;
-    fullName: string;
-    emailAddress?: string;
-    registrationCodeUsed?: string;
-    principalId: Principal;
-    companyId: CompanyId;
-} {
-    return {
-        status: from_candid_variant_n16(_uploadFile, _downloadFile, value.status),
-        userId: value.userId,
-        createdAt: value.createdAt,
-        createdBy: value.createdBy,
-        fullName: value.fullName,
-        emailAddress: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.emailAddress)),
-        registrationCodeUsed: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.registrationCodeUsed)),
-        principalId: value.principalId,
-        companyId: value.companyId
-    };
-}
-function from_candid_record_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    status: {
-        Open: null;
-    } | {
-        Closed: null;
-    };
-    kpiYearId: _KPIYearId;
-    createdAt: bigint;
-    createdBy: Principal;
-    year: bigint;
-    companyId: _CompanyId;
-}): {
-    status: Variant_Open_Closed;
-    kpiYearId: KPIYearId;
-    createdAt: bigint;
-    createdBy: Principal;
-    year: bigint;
-    companyId: CompanyId;
-} {
-    return {
-        status: from_candid_variant_n34(_uploadFile, _downloadFile, value.status),
-        kpiYearId: value.kpiYearId,
-        createdAt: value.createdAt,
-        createdBy: value.createdBy,
-        year: value.year,
-        companyId: value.companyId
-    };
-}
-function from_candid_record_n39(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    nodeId: _OrgNodeId;
-    parentNodeId: [] | [_OrgNodeId];
-    createdAt: bigint;
-    createdBy: Principal;
-    updatedAt: bigint;
-    updatedBy: Principal;
-    nodeName: string;
-    nodeType: {
-        Division: null;
-    } | {
-        Director: null;
-    } | {
-        PresidentDirector: null;
-    } | {
-        Department: null;
-    };
-    companyId: _CompanyId;
-}): {
-    nodeId: OrgNodeId;
-    parentNodeId?: OrgNodeId;
-    createdAt: bigint;
-    createdBy: Principal;
-    updatedAt: bigint;
-    updatedBy: Principal;
-    nodeName: string;
-    nodeType: Variant_Division_Director_PresidentDirector_Department;
-    companyId: CompanyId;
-} {
-    return {
-        nodeId: value.nodeId,
-        parentNodeId: record_opt_to_undefined(from_candid_opt_n20(_uploadFile, _downloadFile, value.parentNodeId)),
-        createdAt: value.createdAt,
-        createdBy: value.createdBy,
-        updatedAt: value.updatedAt,
-        updatedBy: value.updatedBy,
-        nodeName: value.nodeName,
-        nodeType: from_candid_variant_n40(_uploadFile, _downloadFile, value.nodeType),
-        companyId: value.companyId
-    };
-}
-function from_candid_record_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    strategicObjectiveId: string;
-    kpiMeasurement: string;
-    kpiYearId: string;
-    createdAt: bigint;
-    createdBy: Principal;
-    ownerRoleAssignmentId: string;
-    kpiWeight: number;
-    kpiStatus: {
-        Approved: null;
-    } | {
-        Draft: null;
-    } | {
-        Submitted: null;
-    } | {
-        Revised: null;
-    };
-    updatedAt: bigint;
-    updatedBy: Principal;
-    approverUserId: [] | [string];
-    kpiPeriod: {
-        OneTime: null;
-    } | {
-        Quarterly: null;
-    } | {
-        Monthly: null;
-    } | {
-        SemiAnnual: null;
-    } | {
-        Annual: null;
-    };
-    bscAspectId: string;
-    revisionNotes: [] | [string];
-    kpiId: _KPIId;
-    organizationNodeId: string;
-    companyId: _CompanyId;
-}): {
-    strategicObjectiveId: string;
-    kpiMeasurement: string;
-    kpiYearId: string;
-    createdAt: bigint;
-    createdBy: Principal;
-    ownerRoleAssignmentId: string;
-    kpiWeight: number;
-    kpiStatus: Variant_Approved_Draft_Submitted_Revised;
-    updatedAt: bigint;
-    updatedBy: Principal;
-    approverUserId?: string;
-    kpiPeriod: Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual;
-    bscAspectId: string;
-    revisionNotes?: string;
-    kpiId: KPIId;
-    organizationNodeId: string;
-    companyId: CompanyId;
-} {
-    return {
-        strategicObjectiveId: value.strategicObjectiveId,
-        kpiMeasurement: value.kpiMeasurement,
-        kpiYearId: value.kpiYearId,
-        createdAt: value.createdAt,
-        createdBy: value.createdBy,
-        ownerRoleAssignmentId: value.ownerRoleAssignmentId,
-        kpiWeight: value.kpiWeight,
-        kpiStatus: from_candid_variant_n10(_uploadFile, _downloadFile, value.kpiStatus),
-        updatedAt: value.updatedAt,
-        updatedBy: value.updatedBy,
-        approverUserId: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.approverUserId)),
-        kpiPeriod: from_candid_variant_n12(_uploadFile, _downloadFile, value.kpiPeriod),
-        bscAspectId: value.bscAspectId,
-        revisionNotes: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.revisionNotes)),
-        kpiId: value.kpiId,
-        organizationNodeId: value.organizationNodeId,
-        companyId: value.companyId
-    };
-}
-function from_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    Approved: null;
-} | {
-    Draft: null;
-} | {
-    Submitted: null;
-} | {
-    Revised: null;
-}): Variant_Approved_Draft_Submitted_Revised {
-    return "Approved" in value ? Variant_Approved_Draft_Submitted_Revised.Approved : "Draft" in value ? Variant_Approved_Draft_Submitted_Revised.Draft : "Submitted" in value ? Variant_Approved_Draft_Submitted_Revised.Submitted : "Revised" in value ? Variant_Approved_Draft_Submitted_Revised.Revised : value;
-}
-function from_candid_variant_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    OneTime: null;
-} | {
-    Quarterly: null;
-} | {
-    Monthly: null;
-} | {
-    SemiAnnual: null;
-} | {
-    Annual: null;
-}): Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual {
-    return "OneTime" in value ? Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual.OneTime : "Quarterly" in value ? Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual.Quarterly : "Monthly" in value ? Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual.Monthly : "SemiAnnual" in value ? Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual.SemiAnnual : "Annual" in value ? Variant_OneTime_Quarterly_Monthly_SemiAnnual_Annual.Annual : value;
-}
-function from_candid_variant_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    Inactive: null;
-} | {
-    Active: null;
-} | {
-    Unassigned: null;
-}): Variant_Inactive_Active_Unassigned {
-    return "Inactive" in value ? Variant_Inactive_Active_Unassigned.Inactive : "Active" in value ? Variant_Inactive_Active_Unassigned.Active : "Unassigned" in value ? Variant_Inactive_Active_Unassigned.Unassigned : value;
-}
-function from_candid_variant_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    DivisionHead: null;
-} | {
-    Director: null;
-} | {
-    PresidentDirector: null;
-} | {
-    DepartmentHead: null;
-} | {
-    CompanyAdmin: null;
-}): Variant_DivisionHead_Director_PresidentDirector_DepartmentHead_CompanyAdmin {
-    return "DivisionHead" in value ? Variant_DivisionHead_Director_PresidentDirector_DepartmentHead_CompanyAdmin.DivisionHead : "Director" in value ? Variant_DivisionHead_Director_PresidentDirector_DepartmentHead_CompanyAdmin.Director : "PresidentDirector" in value ? Variant_DivisionHead_Director_PresidentDirector_DepartmentHead_CompanyAdmin.PresidentDirector : "DepartmentHead" in value ? Variant_DivisionHead_Director_PresidentDirector_DepartmentHead_CompanyAdmin.DepartmentHead : "CompanyAdmin" in value ? Variant_DivisionHead_Director_PresidentDirector_DepartmentHead_CompanyAdmin.CompanyAdmin : value;
-}
-function from_candid_variant_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    Approved: null;
-} | {
-    Draft: null;
-} | {
-    Rejected: null;
-} | {
-    Submitted: null;
-} | {
-    Revised: null;
-}): Variant_Approved_Draft_Rejected_Submitted_Revised {
-    return "Approved" in value ? Variant_Approved_Draft_Rejected_Submitted_Revised.Approved : "Draft" in value ? Variant_Approved_Draft_Rejected_Submitted_Revised.Draft : "Rejected" in value ? Variant_Approved_Draft_Rejected_Submitted_Revised.Rejected : "Submitted" in value ? Variant_Approved_Draft_Rejected_Submitted_Revised.Submitted : "Revised" in value ? Variant_Approved_Draft_Rejected_Submitted_Revised.Revised : value;
-}
-function from_candid_variant_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    Done: null;
-} | {
-    OnProgress: null;
-} | {
-    Backlog: null;
-} | {
-    CarriedForNextYear: null;
-} | {
-    Pending: null;
-}): Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending {
-    return "Done" in value ? Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending.Done : "OnProgress" in value ? Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending.OnProgress : "Backlog" in value ? Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending.Backlog : "CarriedForNextYear" in value ? Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending.CarriedForNextYear : "Pending" in value ? Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending.Pending : value;
-}
-function from_candid_variant_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    People: null;
-} | {
-    Tools: null;
-} | {
-    Process: null;
-}): Variant_People_Tools_Process {
-    return "People" in value ? Variant_People_Tools_Process.People : "Tools" in value ? Variant_People_Tools_Process.Tools : "Process" in value ? Variant_People_Tools_Process.Process : value;
-}
-function from_candid_variant_n34(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    Open: null;
-} | {
-    Closed: null;
-}): Variant_Open_Closed {
-    return "Open" in value ? Variant_Open_Closed.Open : "Closed" in value ? Variant_Open_Closed.Closed : value;
-}
-function from_candid_variant_n40(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    Division: null;
-} | {
-    Director: null;
-} | {
-    PresidentDirector: null;
-} | {
-    Department: null;
-}): Variant_Division_Director_PresidentDirector_Department {
-    return "Division" in value ? Variant_Division_Director_PresidentDirector_Department.Division : "Director" in value ? Variant_Division_Director_PresidentDirector_Department.Director : "PresidentDirector" in value ? Variant_Division_Director_PresidentDirector_Department.PresidentDirector : "Department" in value ? Variant_Division_Director_PresidentDirector_Department.Department : value;
-}
-function from_candid_variant_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -1536,35 +275,15 @@ function from_candid_variant_n6(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_vec_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_RoleAssignment>): Array<RoleAssignment> {
-    return value.map((x)=>from_candid_RoleAssignment_n18(_uploadFile, _downloadFile, x));
-}
-function from_candid_vec_n31(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_KPIYear>): Array<KPIYear> {
-    return value.map((x)=>from_candid_KPIYear_n32(_uploadFile, _downloadFile, x));
-}
-function from_candid_vec_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_KPI>): Array<KPI> {
-    return value.map((x)=>from_candid_KPI_n8(_uploadFile, _downloadFile, x));
-}
-function from_candid_vec_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_OKR>): Array<OKR> {
-    return value.map((x)=>from_candid_OKR_n23(_uploadFile, _downloadFile, x));
-}
-function from_candid_vec_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_OrgNode>): Array<OrgNode> {
-    return value.map((x)=>from_candid_OrgNode_n38(_uploadFile, _downloadFile, x));
-}
-function from_candid_vec_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_User>): Array<User> {
-    return value.map((x)=>from_candid_User_n29(_uploadFile, _downloadFile, x));
+function from_candid_variant_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    Inactive: null;
+} | {
+    Active: null;
+}): Variant_Inactive_Active {
+    return "Inactive" in value ? Variant_Inactive_Active.Inactive : "Active" in value ? Variant_Inactive_Active.Active : value;
 }
 function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n2(_uploadFile, _downloadFile, value);
-}
-function to_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
-    return value === null ? candid_none() : candid_some(value);
-}
-function to_candid_opt_n41(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserId | null): [] | [_UserId] {
-    return value === null ? candid_none() : candid_some(value);
-}
-function to_candid_opt_n42(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: BSCAspectId | null): [] | [_BSCAspectId] {
-    return value === null ? candid_none() : candid_some(value);
 }
 function to_candid_variant_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
     admin: null;

@@ -141,6 +141,17 @@ export interface OKR {
     targetValue: number;
     companyId: CompanyId;
 }
+export interface Company {
+    createdAt: bigint;
+    createdBy: Principal;
+    activeStatus: Variant_Inactive_Active;
+    companyName: string;
+    companyId: CompanyId;
+}
+export enum Variant_Inactive_Active {
+    Inactive = "Inactive",
+    Active = "Active"
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -250,4 +261,8 @@ export interface backendInterface {
     updateOrganizationNode(nodeId: OrgNodeId, nodeName: string): Promise<void>;
     updateStrategicObjective(objectiveId: StrategicObjectiveId, objectiveName: string): Promise<void>;
     updateUserStatus(userId: UserId, newStatus: string): Promise<void>;
+    deactivateCompany(): Promise<void>;
+    getCompanyInfo(): Promise<Company | null>;
+    resetYearProgressData(kpiYearId: string): Promise<void>;
+    updateCompanyName(newName: string): Promise<void>;
 }
