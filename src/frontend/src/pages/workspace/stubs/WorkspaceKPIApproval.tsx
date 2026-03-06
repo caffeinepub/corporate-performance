@@ -101,6 +101,13 @@ const STATUS_CONFIG: Record<
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const NODE_TYPE_LABELS: Record<string, string> = {
+  PRESIDENT_DIRECTOR: "President Director",
+  DIRECTOR: "Director",
+  DIVISION: "Division",
+  DEPARTMENT: "Department",
+};
+
 function getStatusConfig(status: string) {
   return (
     STATUS_CONFIG[status] ??
@@ -169,6 +176,9 @@ interface FilterBarProps {
   onYearChange: (v: string) => void;
   selectedAspect: string;
   onAspectChange: (v: string) => void;
+  selectedOrgNode: string;
+  onOrgNodeChange: (v: string) => void;
+  orgNodes: OrgNode[];
 }
 
 function FilterBar({
@@ -176,6 +186,9 @@ function FilterBar({
   onYearChange,
   selectedAspect,
   onAspectChange,
+  selectedOrgNode,
+  onOrgNodeChange,
+  orgNodes,
 }: FilterBarProps) {
   const { data: kpiYears } = useListKPIYears();
   const { data: bscAspects } = useListBSCAspects();
@@ -208,7 +221,7 @@ function FilterBar({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="grid grid-cols-2 gap-3 px-4 pb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-4 pb-4">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">
                   KPI Year
@@ -241,6 +254,31 @@ function FilterBar({
                     {(bscAspects ?? []).map((a) => (
                       <SelectItem key={a.aspectId} value={a.aspectId}>
                         {a.aspectName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Organization Node
+                </Label>
+                <Select value={selectedOrgNode} onValueChange={onOrgNodeChange}>
+                  <SelectTrigger
+                    className="h-8 text-xs"
+                    data-ocid="kpi.approval.filter.org_node_select"
+                  >
+                    <SelectValue placeholder="All nodes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All nodes</SelectItem>
+                    {orgNodes.map((n) => (
+                      <SelectItem key={n.nodeId} value={n.nodeId}>
+                        {n.nodeName}
+                        {n.nodeType
+                          ? ` (${NODE_TYPE_LABELS[n.nodeType] ?? n.nodeType})`
+                          : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1091,6 +1129,7 @@ export default function WorkspaceKPIApproval() {
   // Filters
   const [selectedYear, setSelectedYear] = useState("all");
   const [selectedAspect, setSelectedAspect] = useState("all");
+  const [selectedOrgNode, setSelectedOrgNode] = useState("all");
 
   // Load submitted KPIs
   const { data: submittedKPIs, isLoading: kpisLoading } = useListKPIs(
@@ -1133,15 +1172,17 @@ export default function WorkspaceKPIApproval() {
     });
   }, [submittedKPIs, allNodes, myActiveNodeIds]);
 
-  // Client-side aspect filter
+  // Client-side aspect + org node filter
   const filteredKPIs = useMemo(() => {
     if (!eligibleKPIs) return [];
     return eligibleKPIs.filter((k) => {
       if (selectedAspect !== "all" && k.bscAspectId !== selectedAspect)
         return false;
+      if (selectedOrgNode !== "all" && k.organizationNodeId !== selectedOrgNode)
+        return false;
       return true;
     });
-  }, [eligibleKPIs, selectedAspect]);
+  }, [eligibleKPIs, selectedAspect, selectedOrgNode]);
 
   // Lookup maps
   const aspectMap = useMemo(
@@ -1307,6 +1348,9 @@ export default function WorkspaceKPIApproval() {
           onYearChange={setSelectedYear}
           selectedAspect={selectedAspect}
           onAspectChange={setSelectedAspect}
+          selectedOrgNode={selectedOrgNode}
+          onOrgNodeChange={setSelectedOrgNode}
+          orgNodes={allNodes ?? []}
         />
 
         {/* Table */}

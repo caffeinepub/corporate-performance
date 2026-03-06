@@ -1688,8 +1688,8 @@ function FilterBar({
             className="overflow-hidden"
           >
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 px-4 pb-4">
-              {/* Organization Node — only visible when user has multiple roles */}
-              {userOrgNodes.length > 1 && (
+              {/* Organization Node — always visible when user has at least one org node */}
+              {userOrgNodes.length > 0 && (
                 <div className="space-y-1.5 col-span-2 md:col-span-1">
                   <Label className="text-xs text-muted-foreground font-semibold">
                     Organization Node
@@ -1697,11 +1697,12 @@ function FilterBar({
                   <Select
                     value={selectedOrgNode}
                     onValueChange={onOrgNodeChange}
-                    data-ocid="kpi.proposal.filter.org_node"
+                    data-ocid="kpi.proposal.filter.org_node.select"
                   >
                     <SelectTrigger
                       className="h-8 text-xs"
                       style={{ borderColor: "oklch(0.78 0.12 250 / 0.6)" }}
+                      data-ocid="kpi.proposal.filter.org_node"
                     >
                       <SelectValue placeholder="All nodes" />
                     </SelectTrigger>

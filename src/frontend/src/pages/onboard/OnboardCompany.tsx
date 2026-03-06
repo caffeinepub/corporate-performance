@@ -42,30 +42,12 @@ export default function OnboardCompany() {
         adminFullName: adminFullName.trim(),
         email: email.trim() || null,
       });
-      toast.success("Company created successfully! Redirecting…");
-      // Navigation is handled by RootGate once the profile re-fetches.
-      // Do NOT call navigate() here — it conflicts with RootGate's <Navigate>
-      // during the same render cycle and causes React error #301.
+      toast.success("Company created successfully!");
+      void navigate({ to: "/admin" });
     } catch (err) {
-      const raw = err instanceof Error ? err.message : String(err);
-      const alreadyRegistered =
-        raw.toLowerCase().includes("already registered in a company") ||
-        raw.toLowerCase().includes("principal already registered");
-
-      if (alreadyRegistered) {
-        toast.error(
-          "This Internet Identity is already registered in a company. Please sign in to access your existing account.",
-          {
-            duration: 8000,
-            action: {
-              label: "Go to login",
-              onClick: () => void navigate({ to: "/onboard" }),
-            },
-          },
-        );
-      } else {
-        toast.error(raw || "Failed to create company.");
-      }
+      const message =
+        err instanceof Error ? err.message : "Failed to create company.";
+      toast.error(message);
     }
   };
 

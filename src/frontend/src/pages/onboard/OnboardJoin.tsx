@@ -42,39 +42,11 @@ export default function OnboardJoin() {
         email: email.trim() || null,
       });
       toast.success("Successfully joined! Awaiting role assignment.");
-      // Navigation is handled by RootGate once the profile re-fetches.
-      // Do NOT call navigate() here — it conflicts with RootGate's <Navigate>
-      // during the same render cycle and causes React error #301.
+      void navigate({ to: "/pending" });
     } catch (err) {
-      const raw = err instanceof Error ? err.message : String(err);
-      const alreadyRegistered =
-        raw.toLowerCase().includes("already registered in a company") ||
-        raw.toLowerCase().includes("principal already registered");
-      const invalidCode =
-        raw.toLowerCase().includes("invalid registration code") ||
-        raw.toLowerCase().includes("code not found") ||
-        raw.toLowerCase().includes("code already used") ||
-        raw.toLowerCase().includes("inactive");
-
-      if (alreadyRegistered) {
-        toast.error(
-          "This Internet Identity is already registered in a company. Please sign in to access your existing account.",
-          {
-            duration: 8000,
-            action: {
-              label: "Go to login",
-              onClick: () => void navigate({ to: "/onboard" }),
-            },
-          },
-        );
-      } else if (invalidCode) {
-        toast.error(
-          "This registration code is invalid or has already been used. Please ask your Company Admin for a new code.",
-          { duration: 6000 },
-        );
-      } else {
-        toast.error(raw || "Failed to join company.");
-      }
+      const message =
+        err instanceof Error ? err.message : "Failed to join company.";
+      toast.error(message);
     }
   };
 

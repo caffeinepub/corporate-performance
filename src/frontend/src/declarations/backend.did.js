@@ -8,60 +8,637 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const KPIId = IDL.Text;
+export const OKRId = IDL.Text;
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const UserId = IDL.Text;
+export const BSCAspectId = IDL.Text;
 export const CompanyId = IDL.Text;
-export const Company = IDL.Record({
+export const KPIYearId = IDL.Text;
+export const OrgNodeId = IDL.Text;
+export const StrategicObjectiveId = IDL.Text;
+export const RoleAssignmentId = IDL.Text;
+export const RegistrationCode = IDL.Text;
+export const AuditId = IDL.Text;
+export const AuditLog = IDL.Record({
+  'action' : IDL.Text,
+  'auditId' : AuditId,
+  'entityId' : IDL.Text,
+  'performedBy' : IDL.Principal,
+  'timestamp' : IDL.Int,
+  'entityType' : IDL.Text,
+  'companyId' : CompanyId,
+});
+export const UserProfile = IDL.Record({ 'name' : IDL.Text });
+export const KPI = IDL.Record({
+  'strategicObjectiveId' : IDL.Text,
+  'kpiMeasurement' : IDL.Text,
+  'kpiYearId' : IDL.Text,
   'createdAt' : IDL.Int,
   'createdBy' : IDL.Principal,
-  'activeStatus' : IDL.Variant({ 'Inactive' : IDL.Null, 'Active' : IDL.Null }),
-  'companyName' : IDL.Text,
+  'ownerRoleAssignmentId' : IDL.Text,
+  'kpiWeight' : IDL.Float64,
+  'kpiStatus' : IDL.Variant({
+    'Approved' : IDL.Null,
+    'Draft' : IDL.Null,
+    'Submitted' : IDL.Null,
+    'Revised' : IDL.Null,
+  }),
+  'updatedAt' : IDL.Int,
+  'updatedBy' : IDL.Principal,
+  'approverUserId' : IDL.Opt(IDL.Text),
+  'kpiPeriod' : IDL.Variant({
+    'OneTime' : IDL.Null,
+    'Quarterly' : IDL.Null,
+    'Monthly' : IDL.Null,
+    'SemiAnnual' : IDL.Null,
+    'Annual' : IDL.Null,
+  }),
+  'bscAspectId' : IDL.Text,
+  'revisionNotes' : IDL.Opt(IDL.Text),
+  'kpiId' : KPIId,
+  'organizationNodeId' : IDL.Text,
+  'companyId' : CompanyId,
+});
+export const RoleAssignment = IDL.Record({
+  'orgNodeId' : IDL.Opt(OrgNodeId),
+  'roleType' : IDL.Variant({
+    'DivisionHead' : IDL.Null,
+    'Director' : IDL.Null,
+    'PresidentDirector' : IDL.Null,
+    'DepartmentHead' : IDL.Null,
+    'CompanyAdmin' : IDL.Null,
+  }),
+  'assignedAt' : IDL.Int,
+  'assignedBy' : IDL.Principal,
+  'userId' : UserId,
+  'activeStatus' : IDL.Bool,
+  'ultimateParentId' : IDL.Opt(IDL.Text),
+  'assignmentId' : RoleAssignmentId,
+  'parentId' : IDL.Opt(IDL.Text),
+  'grandParentId' : IDL.Opt(IDL.Text),
+  'companyId' : CompanyId,
+});
+export const MyProfile = IDL.Record({
+  'status' : IDL.Variant({
+    'Inactive' : IDL.Null,
+    'Active' : IDL.Null,
+    'Unassigned' : IDL.Null,
+  }),
+  'userId' : UserId,
+  'fullName' : IDL.Text,
+  'principalId' : IDL.Principal,
+  'roles' : IDL.Vec(RoleAssignment),
+  'companyId' : CompanyId,
+});
+export const OKR = IDL.Record({
+  'initialTargetDate' : IDL.Text,
+  'okrStatus' : IDL.Variant({
+    'Approved' : IDL.Null,
+    'Draft' : IDL.Null,
+    'Rejected' : IDL.Null,
+    'Submitted' : IDL.Null,
+    'Revised' : IDL.Null,
+  }),
+  'okrId' : OKRId,
+  'approver2RoleAssignmentId' : IDL.Opt(IDL.Text),
+  'kpiYearId' : KPIYearId,
+  'objective' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'createdBy' : IDL.Principal,
+  'realization' : IDL.Variant({
+    'Done' : IDL.Null,
+    'OnProgress' : IDL.Null,
+    'Backlog' : IDL.Null,
+    'CarriedForNextYear' : IDL.Null,
+    'Pending' : IDL.Null,
+  }),
+  'ownerRoleAssignmentId' : IDL.Text,
+  'okrAspect' : IDL.Variant({
+    'People' : IDL.Null,
+    'Tools' : IDL.Null,
+    'Process' : IDL.Null,
+  }),
+  'revisedTargetDate' : IDL.Opt(IDL.Text),
+  'notes' : IDL.Opt(IDL.Text),
+  'keyResult' : IDL.Text,
+  'approver1RoleAssignmentId' : IDL.Opt(IDL.Text),
+  'targetValue' : IDL.Float64,
+  'companyId' : CompanyId,
+});
+export const User = IDL.Record({
+  'status' : IDL.Variant({
+    'Inactive' : IDL.Null,
+    'Active' : IDL.Null,
+    'Unassigned' : IDL.Null,
+  }),
+  'userId' : UserId,
+  'createdAt' : IDL.Int,
+  'createdBy' : IDL.Principal,
+  'fullName' : IDL.Text,
+  'emailAddress' : IDL.Opt(IDL.Text),
+  'registrationCodeUsed' : IDL.Opt(IDL.Text),
+  'principalId' : IDL.Principal,
+  'companyId' : CompanyId,
+});
+export const BSCAspect = IDL.Record({
+  'createdAt' : IDL.Int,
+  'createdBy' : IDL.Principal,
+  'aspectId' : BSCAspectId,
+  'aspectName' : IDL.Text,
+  'companyId' : CompanyId,
+});
+export const KPIYear = IDL.Record({
+  'status' : IDL.Variant({ 'Open' : IDL.Null, 'Closed' : IDL.Null }),
+  'kpiYearId' : KPIYearId,
+  'createdAt' : IDL.Int,
+  'createdBy' : IDL.Principal,
+  'year' : IDL.Int,
+  'companyId' : CompanyId,
+});
+export const OrgNode = IDL.Record({
+  'nodeId' : OrgNodeId,
+  'parentNodeId' : IDL.Opt(OrgNodeId),
+  'createdAt' : IDL.Int,
+  'createdBy' : IDL.Principal,
+  'updatedAt' : IDL.Int,
+  'updatedBy' : IDL.Principal,
+  'nodeName' : IDL.Text,
+  'nodeType' : IDL.Variant({
+    'Division' : IDL.Null,
+    'Director' : IDL.Null,
+    'PresidentDirector' : IDL.Null,
+    'Department' : IDL.Null,
+  }),
+  'companyId' : CompanyId,
+});
+export const RegistrationCodeRecord = IDL.Record({
+  'code' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'createdBy' : IDL.Principal,
+  'isActive' : IDL.Bool,
+  'companyId' : IDL.Text,
+});
+export const StrategicObjective = IDL.Record({
+  'createdAt' : IDL.Int,
+  'createdBy' : IDL.Principal,
+  'objectiveId' : StrategicObjectiveId,
+  'bscAspectId' : BSCAspectId,
+  'objectiveName' : IDL.Text,
   'companyId' : CompanyId,
 });
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'approveKPI' : IDL.Func([KPIId], [], []),
+  'approveOKR' : IDL.Func([OKRId], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'deactivateCompany' : IDL.Func([], [], []),
+  'assignRole' : IDL.Func([UserId, IDL.Text, IDL.Opt(IDL.Text)], [], []),
+  'createBSCAspect' : IDL.Func([IDL.Text], [BSCAspectId], []),
+  'createCompany' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Opt(IDL.Text)],
+      [CompanyId],
+      [],
+    ),
+  'createKPI' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Float64],
+      [KPIId],
+      [],
+    ),
+  'createKPIYear' : IDL.Func([IDL.Int], [KPIYearId], []),
+  'createOKR' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Float64, IDL.Text],
+      [OKRId],
+      [],
+    ),
+  'createOrganizationNode' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Opt(IDL.Text)],
+      [OrgNodeId],
+      [],
+    ),
+  'createStrategicObjective' : IDL.Func(
+      [BSCAspectId, IDL.Text],
+      [StrategicObjectiveId],
+      [],
+    ),
+  'deactivateRegistrationCode' : IDL.Func([IDL.Text], [], []),
+  'deactivateRoleAssignment' : IDL.Func([RoleAssignmentId], [], []),
+  'deleteKPI' : IDL.Func([KPIId], [], []),
+  'deleteOKR' : IDL.Func([OKRId], [], []),
+  'generateRegistrationCode' : IDL.Func([], [RegistrationCode], []),
+  'getAuditLogs' : IDL.Func(
+      [IDL.Opt(IDL.Text), IDL.Opt(IDL.Text)],
+      [IDL.Vec(AuditLog)],
+      ['query'],
+    ),
+  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-  'getCompanyInfo' : IDL.Func([], [IDL.Opt(Company)], ['query']),
+  'getKPI' : IDL.Func([KPIId], [IDL.Opt(KPI)], ['query']),
+  'getMyProfile' : IDL.Func([], [IDL.Opt(MyProfile)], ['query']),
+  'getOKR' : IDL.Func([OKRId], [IDL.Opt(OKR)], ['query']),
+  'getUserById' : IDL.Func([UserId], [IDL.Opt(User)], ['query']),
+  'getUserProfile' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(UserProfile)],
+      ['query'],
+    ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'resetYearProgressData' : IDL.Func([IDL.Text], [], []),
-  'updateCompanyName' : IDL.Func([IDL.Text], [], []),
+  'joinCompany' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Opt(IDL.Text)],
+      [CompanyId],
+      [],
+    ),
+  'listBSCAspects' : IDL.Func([], [IDL.Vec(BSCAspect)], ['query']),
+  'listKPIYears' : IDL.Func([], [IDL.Vec(KPIYear)], ['query']),
+  'listKPIs' : IDL.Func(
+      [IDL.Opt(IDL.Text), IDL.Opt(IDL.Text), IDL.Opt(IDL.Text)],
+      [IDL.Vec(KPI)],
+      ['query'],
+    ),
+  'listOKRs' : IDL.Func(
+      [IDL.Opt(IDL.Text), IDL.Opt(IDL.Text)],
+      [IDL.Vec(OKR)],
+      ['query'],
+    ),
+  'listOrganizationNodes' : IDL.Func([], [IDL.Vec(OrgNode)], ['query']),
+  'listRegistrationCodes' : IDL.Func(
+      [],
+      [IDL.Vec(RegistrationCodeRecord)],
+      ['query'],
+    ),
+  'listRoleAssignments' : IDL.Func(
+      [IDL.Opt(UserId)],
+      [IDL.Vec(RoleAssignment)],
+      ['query'],
+    ),
+  'listStrategicObjectives' : IDL.Func(
+      [IDL.Opt(BSCAspectId)],
+      [IDL.Vec(StrategicObjective)],
+      ['query'],
+    ),
+  'listUsers' : IDL.Func([], [IDL.Vec(User)], ['query']),
+  'rejectKPI' : IDL.Func([KPIId, IDL.Text], [], []),
+  'rejectOKR' : IDL.Func([OKRId, IDL.Text], [], []),
+  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setKPIYearStatus' : IDL.Func([KPIYearId, IDL.Text], [], []),
+  'submitKPI' : IDL.Func([KPIId], [], []),
+  'submitOKR' : IDL.Func([OKRId], [], []),
+  'updateBSCAspect' : IDL.Func([BSCAspectId, IDL.Text], [], []),
+  'updateKPI' : IDL.Func(
+      [KPIId, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Float64],
+      [],
+      [],
+    ),
+  'updateKPIProgress' : IDL.Func([KPIId, IDL.Nat, IDL.Float64], [], []),
+  'updateOKR' : IDL.Func(
+      [
+        OKRId,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Float64,
+        IDL.Text,
+        IDL.Opt(IDL.Text),
+      ],
+      [],
+      [],
+    ),
+  'updateOKRProgress' : IDL.Func([OKRId, IDL.Text, IDL.Opt(IDL.Text)], [], []),
+  'updateOrganizationNode' : IDL.Func([OrgNodeId, IDL.Text], [], []),
+  'updateStrategicObjective' : IDL.Func(
+      [StrategicObjectiveId, IDL.Text],
+      [],
+      [],
+    ),
+  'updateUserStatus' : IDL.Func([UserId, IDL.Text], [], []),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const KPIId = IDL.Text;
+  const OKRId = IDL.Text;
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const UserId = IDL.Text;
+  const BSCAspectId = IDL.Text;
   const CompanyId = IDL.Text;
-  const Company = IDL.Record({
+  const KPIYearId = IDL.Text;
+  const OrgNodeId = IDL.Text;
+  const StrategicObjectiveId = IDL.Text;
+  const RoleAssignmentId = IDL.Text;
+  const RegistrationCode = IDL.Text;
+  const AuditId = IDL.Text;
+  const AuditLog = IDL.Record({
+    'action' : IDL.Text,
+    'auditId' : AuditId,
+    'entityId' : IDL.Text,
+    'performedBy' : IDL.Principal,
+    'timestamp' : IDL.Int,
+    'entityType' : IDL.Text,
+    'companyId' : CompanyId,
+  });
+  const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const KPI = IDL.Record({
+    'strategicObjectiveId' : IDL.Text,
+    'kpiMeasurement' : IDL.Text,
+    'kpiYearId' : IDL.Text,
     'createdAt' : IDL.Int,
     'createdBy' : IDL.Principal,
-    'activeStatus' : IDL.Variant({
+    'ownerRoleAssignmentId' : IDL.Text,
+    'kpiWeight' : IDL.Float64,
+    'kpiStatus' : IDL.Variant({
+      'Approved' : IDL.Null,
+      'Draft' : IDL.Null,
+      'Submitted' : IDL.Null,
+      'Revised' : IDL.Null,
+    }),
+    'updatedAt' : IDL.Int,
+    'updatedBy' : IDL.Principal,
+    'approverUserId' : IDL.Opt(IDL.Text),
+    'kpiPeriod' : IDL.Variant({
+      'OneTime' : IDL.Null,
+      'Quarterly' : IDL.Null,
+      'Monthly' : IDL.Null,
+      'SemiAnnual' : IDL.Null,
+      'Annual' : IDL.Null,
+    }),
+    'bscAspectId' : IDL.Text,
+    'revisionNotes' : IDL.Opt(IDL.Text),
+    'kpiId' : KPIId,
+    'organizationNodeId' : IDL.Text,
+    'companyId' : CompanyId,
+  });
+  const RoleAssignment = IDL.Record({
+    'orgNodeId' : IDL.Opt(OrgNodeId),
+    'roleType' : IDL.Variant({
+      'DivisionHead' : IDL.Null,
+      'Director' : IDL.Null,
+      'PresidentDirector' : IDL.Null,
+      'DepartmentHead' : IDL.Null,
+      'CompanyAdmin' : IDL.Null,
+    }),
+    'assignedAt' : IDL.Int,
+    'assignedBy' : IDL.Principal,
+    'userId' : UserId,
+    'activeStatus' : IDL.Bool,
+    'ultimateParentId' : IDL.Opt(IDL.Text),
+    'assignmentId' : RoleAssignmentId,
+    'parentId' : IDL.Opt(IDL.Text),
+    'grandParentId' : IDL.Opt(IDL.Text),
+    'companyId' : CompanyId,
+  });
+  const MyProfile = IDL.Record({
+    'status' : IDL.Variant({
       'Inactive' : IDL.Null,
       'Active' : IDL.Null,
+      'Unassigned' : IDL.Null,
     }),
-    'companyName' : IDL.Text,
+    'userId' : UserId,
+    'fullName' : IDL.Text,
+    'principalId' : IDL.Principal,
+    'roles' : IDL.Vec(RoleAssignment),
+    'companyId' : CompanyId,
+  });
+  const OKR = IDL.Record({
+    'initialTargetDate' : IDL.Text,
+    'okrStatus' : IDL.Variant({
+      'Approved' : IDL.Null,
+      'Draft' : IDL.Null,
+      'Rejected' : IDL.Null,
+      'Submitted' : IDL.Null,
+      'Revised' : IDL.Null,
+    }),
+    'okrId' : OKRId,
+    'approver2RoleAssignmentId' : IDL.Opt(IDL.Text),
+    'kpiYearId' : KPIYearId,
+    'objective' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'createdBy' : IDL.Principal,
+    'realization' : IDL.Variant({
+      'Done' : IDL.Null,
+      'OnProgress' : IDL.Null,
+      'Backlog' : IDL.Null,
+      'CarriedForNextYear' : IDL.Null,
+      'Pending' : IDL.Null,
+    }),
+    'ownerRoleAssignmentId' : IDL.Text,
+    'okrAspect' : IDL.Variant({
+      'People' : IDL.Null,
+      'Tools' : IDL.Null,
+      'Process' : IDL.Null,
+    }),
+    'revisedTargetDate' : IDL.Opt(IDL.Text),
+    'notes' : IDL.Opt(IDL.Text),
+    'keyResult' : IDL.Text,
+    'approver1RoleAssignmentId' : IDL.Opt(IDL.Text),
+    'targetValue' : IDL.Float64,
+    'companyId' : CompanyId,
+  });
+  const User = IDL.Record({
+    'status' : IDL.Variant({
+      'Inactive' : IDL.Null,
+      'Active' : IDL.Null,
+      'Unassigned' : IDL.Null,
+    }),
+    'userId' : UserId,
+    'createdAt' : IDL.Int,
+    'createdBy' : IDL.Principal,
+    'fullName' : IDL.Text,
+    'emailAddress' : IDL.Opt(IDL.Text),
+    'registrationCodeUsed' : IDL.Opt(IDL.Text),
+    'principalId' : IDL.Principal,
+    'companyId' : CompanyId,
+  });
+  const BSCAspect = IDL.Record({
+    'createdAt' : IDL.Int,
+    'createdBy' : IDL.Principal,
+    'aspectId' : BSCAspectId,
+    'aspectName' : IDL.Text,
+    'companyId' : CompanyId,
+  });
+  const KPIYear = IDL.Record({
+    'status' : IDL.Variant({ 'Open' : IDL.Null, 'Closed' : IDL.Null }),
+    'kpiYearId' : KPIYearId,
+    'createdAt' : IDL.Int,
+    'createdBy' : IDL.Principal,
+    'year' : IDL.Int,
+    'companyId' : CompanyId,
+  });
+  const OrgNode = IDL.Record({
+    'nodeId' : OrgNodeId,
+    'parentNodeId' : IDL.Opt(OrgNodeId),
+    'createdAt' : IDL.Int,
+    'createdBy' : IDL.Principal,
+    'updatedAt' : IDL.Int,
+    'updatedBy' : IDL.Principal,
+    'nodeName' : IDL.Text,
+    'nodeType' : IDL.Variant({
+      'Division' : IDL.Null,
+      'Director' : IDL.Null,
+      'PresidentDirector' : IDL.Null,
+      'Department' : IDL.Null,
+    }),
+    'companyId' : CompanyId,
+  });
+  const RegistrationCodeRecord = IDL.Record({
+    'code' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'createdBy' : IDL.Principal,
+    'isActive' : IDL.Bool,
+    'companyId' : IDL.Text,
+  });
+  const StrategicObjective = IDL.Record({
+    'createdAt' : IDL.Int,
+    'createdBy' : IDL.Principal,
+    'objectiveId' : StrategicObjectiveId,
+    'bscAspectId' : BSCAspectId,
+    'objectiveName' : IDL.Text,
     'companyId' : CompanyId,
   });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'approveKPI' : IDL.Func([KPIId], [], []),
+    'approveOKR' : IDL.Func([OKRId], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'deactivateCompany' : IDL.Func([], [], []),
+    'assignRole' : IDL.Func([UserId, IDL.Text, IDL.Opt(IDL.Text)], [], []),
+    'createBSCAspect' : IDL.Func([IDL.Text], [BSCAspectId], []),
+    'createCompany' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Opt(IDL.Text)],
+        [CompanyId],
+        [],
+      ),
+    'createKPI' : IDL.Func(
+        [
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Float64,
+        ],
+        [KPIId],
+        [],
+      ),
+    'createKPIYear' : IDL.Func([IDL.Int], [KPIYearId], []),
+    'createOKR' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Float64, IDL.Text],
+        [OKRId],
+        [],
+      ),
+    'createOrganizationNode' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Opt(IDL.Text)],
+        [OrgNodeId],
+        [],
+      ),
+    'createStrategicObjective' : IDL.Func(
+        [BSCAspectId, IDL.Text],
+        [StrategicObjectiveId],
+        [],
+      ),
+    'deactivateRegistrationCode' : IDL.Func([IDL.Text], [], []),
+    'deactivateRoleAssignment' : IDL.Func([RoleAssignmentId], [], []),
+    'deleteKPI' : IDL.Func([KPIId], [], []),
+    'deleteOKR' : IDL.Func([OKRId], [], []),
+    'generateRegistrationCode' : IDL.Func([], [RegistrationCode], []),
+    'getAuditLogs' : IDL.Func(
+        [IDL.Opt(IDL.Text), IDL.Opt(IDL.Text)],
+        [IDL.Vec(AuditLog)],
+        ['query'],
+      ),
+    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-    'getCompanyInfo' : IDL.Func([], [IDL.Opt(Company)], ['query']),
+    'getKPI' : IDL.Func([KPIId], [IDL.Opt(KPI)], ['query']),
+    'getMyProfile' : IDL.Func([], [IDL.Opt(MyProfile)], ['query']),
+    'getOKR' : IDL.Func([OKRId], [IDL.Opt(OKR)], ['query']),
+    'getUserById' : IDL.Func([UserId], [IDL.Opt(User)], ['query']),
+    'getUserProfile' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(UserProfile)],
+        ['query'],
+      ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'resetYearProgressData' : IDL.Func([IDL.Text], [], []),
-    'updateCompanyName' : IDL.Func([IDL.Text], [], []),
+    'joinCompany' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Opt(IDL.Text)],
+        [CompanyId],
+        [],
+      ),
+    'listBSCAspects' : IDL.Func([], [IDL.Vec(BSCAspect)], ['query']),
+    'listKPIYears' : IDL.Func([], [IDL.Vec(KPIYear)], ['query']),
+    'listKPIs' : IDL.Func(
+        [IDL.Opt(IDL.Text), IDL.Opt(IDL.Text), IDL.Opt(IDL.Text)],
+        [IDL.Vec(KPI)],
+        ['query'],
+      ),
+    'listOKRs' : IDL.Func(
+        [IDL.Opt(IDL.Text), IDL.Opt(IDL.Text)],
+        [IDL.Vec(OKR)],
+        ['query'],
+      ),
+    'listOrganizationNodes' : IDL.Func([], [IDL.Vec(OrgNode)], ['query']),
+    'listRegistrationCodes' : IDL.Func(
+        [],
+        [IDL.Vec(RegistrationCodeRecord)],
+        ['query'],
+      ),
+    'listRoleAssignments' : IDL.Func(
+        [IDL.Opt(UserId)],
+        [IDL.Vec(RoleAssignment)],
+        ['query'],
+      ),
+    'listStrategicObjectives' : IDL.Func(
+        [IDL.Opt(BSCAspectId)],
+        [IDL.Vec(StrategicObjective)],
+        ['query'],
+      ),
+    'listUsers' : IDL.Func([], [IDL.Vec(User)], ['query']),
+    'rejectKPI' : IDL.Func([KPIId, IDL.Text], [], []),
+    'rejectOKR' : IDL.Func([OKRId, IDL.Text], [], []),
+    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setKPIYearStatus' : IDL.Func([KPIYearId, IDL.Text], [], []),
+    'submitKPI' : IDL.Func([KPIId], [], []),
+    'submitOKR' : IDL.Func([OKRId], [], []),
+    'updateBSCAspect' : IDL.Func([BSCAspectId, IDL.Text], [], []),
+    'updateKPI' : IDL.Func(
+        [KPIId, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Float64],
+        [],
+        [],
+      ),
+    'updateKPIProgress' : IDL.Func([KPIId, IDL.Nat, IDL.Float64], [], []),
+    'updateOKR' : IDL.Func(
+        [
+          OKRId,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Float64,
+          IDL.Text,
+          IDL.Opt(IDL.Text),
+        ],
+        [],
+        [],
+      ),
+    'updateOKRProgress' : IDL.Func(
+        [OKRId, IDL.Text, IDL.Opt(IDL.Text)],
+        [],
+        [],
+      ),
+    'updateOrganizationNode' : IDL.Func([OrgNodeId, IDL.Text], [], []),
+    'updateStrategicObjective' : IDL.Func(
+        [StrategicObjectiveId, IDL.Text],
+        [],
+        [],
+      ),
+    'updateUserStatus' : IDL.Func([UserId, IDL.Text], [], []),
   });
 };
 

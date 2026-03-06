@@ -10,27 +10,248 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface Company {
-  'createdAt' : bigint,
-  'createdBy' : Principal,
-  'activeStatus' : { 'Inactive' : null } |
-    { 'Active' : null },
-  'companyName' : string,
+export type AuditId = string;
+export interface AuditLog {
+  'action' : string,
+  'auditId' : AuditId,
+  'entityId' : string,
+  'performedBy' : Principal,
+  'timestamp' : bigint,
+  'entityType' : string,
   'companyId' : CompanyId,
 }
+export interface BSCAspect {
+  'createdAt' : bigint,
+  'createdBy' : Principal,
+  'aspectId' : BSCAspectId,
+  'aspectName' : string,
+  'companyId' : CompanyId,
+}
+export type BSCAspectId = string;
 export type CompanyId = string;
+export interface KPI {
+  'strategicObjectiveId' : string,
+  'kpiMeasurement' : string,
+  'kpiYearId' : string,
+  'createdAt' : bigint,
+  'createdBy' : Principal,
+  'ownerRoleAssignmentId' : string,
+  'kpiWeight' : number,
+  'kpiStatus' : { 'Approved' : null } |
+    { 'Draft' : null } |
+    { 'Submitted' : null } |
+    { 'Revised' : null },
+  'updatedAt' : bigint,
+  'updatedBy' : Principal,
+  'approverUserId' : [] | [string],
+  'kpiPeriod' : { 'OneTime' : null } |
+    { 'Quarterly' : null } |
+    { 'Monthly' : null } |
+    { 'SemiAnnual' : null } |
+    { 'Annual' : null },
+  'bscAspectId' : string,
+  'revisionNotes' : [] | [string],
+  'kpiId' : KPIId,
+  'organizationNodeId' : string,
+  'companyId' : CompanyId,
+}
+export type KPIId = string;
+export interface KPIYear {
+  'status' : { 'Open' : null } |
+    { 'Closed' : null },
+  'kpiYearId' : KPIYearId,
+  'createdAt' : bigint,
+  'createdBy' : Principal,
+  'year' : bigint,
+  'companyId' : CompanyId,
+}
+export type KPIYearId = string;
+export interface MyProfile {
+  'status' : { 'Inactive' : null } |
+    { 'Active' : null } |
+    { 'Unassigned' : null },
+  'userId' : UserId,
+  'fullName' : string,
+  'principalId' : Principal,
+  'roles' : Array<RoleAssignment>,
+  'companyId' : CompanyId,
+}
+export interface OKR {
+  'initialTargetDate' : string,
+  'okrStatus' : { 'Approved' : null } |
+    { 'Draft' : null } |
+    { 'Rejected' : null } |
+    { 'Submitted' : null } |
+    { 'Revised' : null },
+  'okrId' : OKRId,
+  'approver2RoleAssignmentId' : [] | [string],
+  'kpiYearId' : KPIYearId,
+  'objective' : string,
+  'createdAt' : bigint,
+  'createdBy' : Principal,
+  'realization' : { 'Done' : null } |
+    { 'OnProgress' : null } |
+    { 'Backlog' : null } |
+    { 'CarriedForNextYear' : null } |
+    { 'Pending' : null },
+  'ownerRoleAssignmentId' : string,
+  'okrAspect' : { 'People' : null } |
+    { 'Tools' : null } |
+    { 'Process' : null },
+  'revisedTargetDate' : [] | [string],
+  'notes' : [] | [string],
+  'keyResult' : string,
+  'approver1RoleAssignmentId' : [] | [string],
+  'targetValue' : number,
+  'companyId' : CompanyId,
+}
+export type OKRId = string;
+export interface OrgNode {
+  'nodeId' : OrgNodeId,
+  'parentNodeId' : [] | [OrgNodeId],
+  'createdAt' : bigint,
+  'createdBy' : Principal,
+  'updatedAt' : bigint,
+  'updatedBy' : Principal,
+  'nodeName' : string,
+  'nodeType' : { 'Division' : null } |
+    { 'Director' : null } |
+    { 'PresidentDirector' : null } |
+    { 'Department' : null },
+  'companyId' : CompanyId,
+}
+export type OrgNodeId = string;
+export type RegistrationCode = string;
+export interface RegistrationCodeRecord {
+  'code' : string,
+  'createdAt' : bigint,
+  'createdBy' : Principal,
+  'isActive' : boolean,
+  'companyId' : string,
+}
+export interface RoleAssignment {
+  'orgNodeId' : [] | [OrgNodeId],
+  'roleType' : { 'DivisionHead' : null } |
+    { 'Director' : null } |
+    { 'PresidentDirector' : null } |
+    { 'DepartmentHead' : null } |
+    { 'CompanyAdmin' : null },
+  'assignedAt' : bigint,
+  'assignedBy' : Principal,
+  'userId' : UserId,
+  'activeStatus' : boolean,
+  'ultimateParentId' : [] | [string],
+  'assignmentId' : RoleAssignmentId,
+  'parentId' : [] | [string],
+  'grandParentId' : [] | [string],
+  'companyId' : CompanyId,
+}
+export type RoleAssignmentId = string;
+export interface StrategicObjective {
+  'createdAt' : bigint,
+  'createdBy' : Principal,
+  'objectiveId' : StrategicObjectiveId,
+  'bscAspectId' : BSCAspectId,
+  'objectiveName' : string,
+  'companyId' : CompanyId,
+}
+export type StrategicObjectiveId = string;
+export interface User {
+  'status' : { 'Inactive' : null } |
+    { 'Active' : null } |
+    { 'Unassigned' : null },
+  'userId' : UserId,
+  'createdAt' : bigint,
+  'createdBy' : Principal,
+  'fullName' : string,
+  'emailAddress' : [] | [string],
+  'registrationCodeUsed' : [] | [string],
+  'principalId' : Principal,
+  'companyId' : CompanyId,
+}
+export type UserId = string;
+export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'approveKPI' : ActorMethod<[KPIId], undefined>,
+  'approveOKR' : ActorMethod<[OKRId], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'deactivateCompany' : ActorMethod<[], undefined>,
+  'assignRole' : ActorMethod<[UserId, string, [] | [string]], undefined>,
+  'createBSCAspect' : ActorMethod<[string], BSCAspectId>,
+  'createCompany' : ActorMethod<[string, string, [] | [string]], CompanyId>,
+  'createKPI' : ActorMethod<
+    [string, string, string, string, string, string, number],
+    KPIId
+  >,
+  'createKPIYear' : ActorMethod<[bigint], KPIYearId>,
+  'createOKR' : ActorMethod<
+    [string, string, string, string, number, string],
+    OKRId
+  >,
+  'createOrganizationNode' : ActorMethod<
+    [string, string, [] | [string]],
+    OrgNodeId
+  >,
+  'createStrategicObjective' : ActorMethod<
+    [BSCAspectId, string],
+    StrategicObjectiveId
+  >,
+  'deactivateRegistrationCode' : ActorMethod<[string], undefined>,
+  'deactivateRoleAssignment' : ActorMethod<[RoleAssignmentId], undefined>,
+  'deleteKPI' : ActorMethod<[KPIId], undefined>,
+  'deleteOKR' : ActorMethod<[OKRId], undefined>,
+  'generateRegistrationCode' : ActorMethod<[], RegistrationCode>,
+  'getAuditLogs' : ActorMethod<[[] | [string], [] | [string]], Array<AuditLog>>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getCompanyInfo' : ActorMethod<[], [] | [Company]>,
+  'getKPI' : ActorMethod<[KPIId], [] | [KPI]>,
+  'getMyProfile' : ActorMethod<[], [] | [MyProfile]>,
+  'getOKR' : ActorMethod<[OKRId], [] | [OKR]>,
+  'getUserById' : ActorMethod<[UserId], [] | [User]>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'resetYearProgressData' : ActorMethod<[string], undefined>,
-  'updateCompanyName' : ActorMethod<[string], undefined>,
+  'joinCompany' : ActorMethod<[string, string, [] | [string]], CompanyId>,
+  'listBSCAspects' : ActorMethod<[], Array<BSCAspect>>,
+  'listKPIYears' : ActorMethod<[], Array<KPIYear>>,
+  'listKPIs' : ActorMethod<
+    [[] | [string], [] | [string], [] | [string]],
+    Array<KPI>
+  >,
+  'listOKRs' : ActorMethod<[[] | [string], [] | [string]], Array<OKR>>,
+  'listOrganizationNodes' : ActorMethod<[], Array<OrgNode>>,
+  'listRegistrationCodes' : ActorMethod<[], Array<RegistrationCodeRecord>>,
+  'listRoleAssignments' : ActorMethod<[[] | [UserId]], Array<RoleAssignment>>,
+  'listStrategicObjectives' : ActorMethod<
+    [[] | [BSCAspectId]],
+    Array<StrategicObjective>
+  >,
+  'listUsers' : ActorMethod<[], Array<User>>,
+  'rejectKPI' : ActorMethod<[KPIId, string], undefined>,
+  'rejectOKR' : ActorMethod<[OKRId, string], undefined>,
+  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setKPIYearStatus' : ActorMethod<[KPIYearId, string], undefined>,
+  'submitKPI' : ActorMethod<[KPIId], undefined>,
+  'submitOKR' : ActorMethod<[OKRId], undefined>,
+  'updateBSCAspect' : ActorMethod<[BSCAspectId, string], undefined>,
+  'updateKPI' : ActorMethod<
+    [KPIId, string, string, string, string, number],
+    undefined
+  >,
+  'updateKPIProgress' : ActorMethod<[KPIId, bigint, number], undefined>,
+  'updateOKR' : ActorMethod<
+    [OKRId, string, string, string, number, string, [] | [string]],
+    undefined
+  >,
+  'updateOKRProgress' : ActorMethod<[OKRId, string, [] | [string]], undefined>,
+  'updateOrganizationNode' : ActorMethod<[OrgNodeId, string], undefined>,
+  'updateStrategicObjective' : ActorMethod<
+    [StrategicObjectiveId, string],
+    undefined
+  >,
+  'updateUserStatus' : ActorMethod<[UserId, string], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
