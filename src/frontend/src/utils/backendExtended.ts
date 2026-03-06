@@ -74,7 +74,8 @@ function extendedIdlFactory({
     achievement: IdlParam.Float64,
     score: IdlParam.Float64,
     updatedAt: IdlParam.Int,
-    updatedBy: IdlParam.Opt(IdlParam.Principal),
+    // updatedBy is a non-optional Principal in the Motoko backend (KPIProgress type)
+    updatedBy: IdlParam.Principal,
   });
 
   return IdlParam.Service({
@@ -162,7 +163,8 @@ export interface KPIProgressRecord {
   achievement: number;
   score: number;
   updatedAt: bigint;
-  updatedBy: unknown;
+  // Non-optional Principal — matches Motoko KPIProgress.updatedBy
+  updatedBy: unknown; // Principal type from @dfinity/principal
 }
 
 export interface KPIProgressData {

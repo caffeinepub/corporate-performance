@@ -6,7 +6,7 @@ import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import Text "mo:core/Text";
-import List "mo:core/List";
+import Nat "mo:core/Nat";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
@@ -1568,9 +1568,13 @@ actor {
           kpiTargets.remove(existingId);
         };
 
-        // Add new targets
+        // Add new targets — use a compound key (kpiId + "-period-" + periodIndex) as the
+        // targetId instead of generateId(). The generateId() function uses Time.now() which
+        // returns the SAME nanosecond timestamp for all iterations within a single message
+        // execution on the IC, causing duplicate map keys and only the last target surviving.
+        // A compound key based on kpiId and periodIndex is stable, unique, and deterministic.
         for ((periodIndex, targetValue) in targets.vals()) {
-          let targetId = generateId();
+          let targetId = kpiId # "-period-" # periodIndex.toText();
           let target : KPITarget = {
             targetId;
             kpiId;

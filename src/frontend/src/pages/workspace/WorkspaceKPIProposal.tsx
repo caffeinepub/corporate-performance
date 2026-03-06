@@ -785,16 +785,13 @@ function KPIForm({
               type="text"
               placeholder="e.g. 0: No Progress, 3: On track, 5: Exceeded target by >20%"
               value={kpiScoreParameter}
-              onChange={(e) =>
-                setKpiScoreParameter(
-                  e.target.value.replace(/[^a-zA-Z0-9\s.,;:()\-\/]/g, ""),
-                )
-              }
+              onChange={(e) => setKpiScoreParameter(e.target.value)}
               maxLength={500}
             />
             <p className="text-xs text-muted-foreground">
-              Alphanumeric text describing how to rate progress on a 0–5 scale.
-              Helps the approver understand your scoring criteria.
+              Describe how to rate progress on a 0–5 scale using any characters
+              (e.g. numbers, symbols like &gt;, &lt;, %, =). Helps the approver
+              understand your scoring criteria.
             </p>
           </div>
 

@@ -683,7 +683,10 @@ export function useGetKPIScoreParameter(kpiId: string) {
       return result[0] ?? "";
     },
     enabled: !!kpiId && !!identity,
-    staleTime: 60_000,
+    // staleTime: 0 ensures fresh data is fetched every time a different KPI
+    // is opened in the approval sheet or progress card
+    staleTime: 0,
+    refetchOnMount: true,
   });
 }
 
