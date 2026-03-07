@@ -144,6 +144,18 @@ function extendedIdlFactory({
       [IdlParam.Vec(KPIProgressType)],
       ["query"],
     ),
+
+    // ── OKR Progress (with revisedTargetDate) ─────────────────────────────────
+    updateOKRProgressWithDate: IdlParam.Func(
+      [
+        IdlParam.Text, // okrId
+        IdlParam.Text, // realization
+        IdlParam.Opt(IdlParam.Text), // notes
+        IdlParam.Opt(IdlParam.Text), // revisedTargetDate
+      ],
+      [],
+      [],
+    ),
   });
 }
 
@@ -206,6 +218,12 @@ export interface ExtendedActor {
     score: number,
   ) => Promise<void>;
   getKPIProgressList: (kpiId: string) => Promise<KPIProgressRecord[]>;
+  updateOKRProgressWithDate: (
+    okrId: string,
+    realization: string,
+    notes: [string] | [],
+    revisedTargetDate: [string] | [],
+  ) => Promise<void>;
 }
 
 // ─── Actor factory ────────────────────────────────────────────────────────────

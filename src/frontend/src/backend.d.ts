@@ -250,4 +250,5 @@ export interface backendInterface {
     updateOrganizationNode(nodeId: OrgNodeId, nodeName: string): Promise<void>;
     updateStrategicObjective(objectiveId: StrategicObjectiveId, objectiveName: string): Promise<void>;
     updateUserStatus(userId: UserId, newStatus: string): Promise<void>;
+    updateOKRProgressWithDate(okrId: OKRId, realization: string, notes: string | null, revisedTargetDate: string | null): Promise<void>;
 }

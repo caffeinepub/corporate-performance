@@ -15,6 +15,7 @@ import {
   useListKPIs,
   useListOrganizationNodes,
   useMyProfile,
+  useNodeKPIProgressSummary,
 } from "@/hooks/useQueries";
 import type { KPIProgressRecord, KPITargetRecord } from "@/hooks/useQueries";
 import {
@@ -22,6 +23,7 @@ import {
   ChevronDown,
   ChevronUp,
   ClipboardList,
+  Trophy,
   Users,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -538,6 +540,19 @@ function NodeSection({
   const [expanded, setExpanded] = useState(true);
   const nodeType = node.nodeType as NodeType;
 
+  // Compute total final score for this node using cached progress queries
+  const kpiSummaryInputs = useMemo(
+    () =>
+      kpis.map((k) => ({
+        kpiId: k.kpiId,
+        kpiWeight: k.kpiWeight,
+        kpiPeriod: k.kpiPeriod as string,
+      })),
+    [kpis],
+  );
+  const { totalFinalScore, allLoaded } =
+    useNodeKPIProgressSummary(kpiSummaryInputs);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -584,6 +599,22 @@ function NodeSection({
               {kpis.length} KPI{kpis.length !== 1 ? "s" : ""}
             </Badge>
           </div>
+        </div>
+
+        {/* Total Final Score chip */}
+        <div
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg flex-shrink-0"
+          style={{
+            background: "oklch(0.92 0.04 145)",
+            color: "oklch(0.32 0.12 145)",
+          }}
+          data-ocid={`sub.kpi.section.score.${sectionIndex + 1}`}
+        >
+          <Trophy className="w-3.5 h-3.5 flex-shrink-0" />
+          <span className="text-xs font-semibold whitespace-nowrap">
+            {allLoaded ? totalFinalScore.toFixed(2) : "…"}
+          </span>
+          <span className="text-xs font-normal opacity-70">Total Score</span>
         </div>
 
         {expanded ? (
@@ -641,6 +672,39 @@ function NodeSection({
                     index={i}
                   />
                 ))}
+              </div>
+
+              {/* Total Final Score footer row */}
+              <div
+                className="grid items-center gap-2 px-4 py-3 border-t border-border mx-2 mb-2 rounded-xl"
+                style={{
+                  gridTemplateColumns: "1fr 120px 80px 90px 90px 28px",
+                  background: "oklch(0.92 0.04 145)",
+                }}
+                data-ocid={`sub.kpi.section.total.${sectionIndex + 1}`}
+              >
+                <div className="flex items-center gap-1.5 px-4">
+                  <Trophy
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    style={{ color: "oklch(0.32 0.12 145)" }}
+                  />
+                  <span
+                    className="text-xs font-semibold"
+                    style={{ color: "oklch(0.32 0.12 145)" }}
+                  >
+                    Total Final Score
+                  </span>
+                </div>
+                <span />
+                <span />
+                <span />
+                <span
+                  className="text-sm font-bold"
+                  style={{ color: "oklch(0.28 0.14 145)" }}
+                >
+                  {allLoaded ? totalFinalScore.toFixed(2) : "…"}
+                </span>
+                <span />
               </div>
             </div>
           </motion.div>

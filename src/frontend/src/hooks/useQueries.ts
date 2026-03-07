@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useMemo } from "react";
 import type {
   BSCAspect,
@@ -830,6 +835,68 @@ export function useGetKPIProgressData(kpiId: string) {
   };
 }
 
+/**
+ * Fetches progress data for multiple KPIs in parallel and computes the
+ * total final score (sum of kpiYearlyAchievement * kpiWeight/100) for all
+ * given KPIs. Used by Subordinate KPI Progress to show per-node totals.
+ */
+export function useNodeKPIProgressSummary(
+  kpis: Array<{ kpiId: string; kpiWeight: number; kpiPeriod: string }>,
+) {
+  const { identity } = useInternetIdentity();
+
+  const progressResults = useQueries({
+    queries: kpis.map((kpi) => ({
+      queryKey: ["kpiProgressList", kpi.kpiId],
+      queryFn: async (): Promise<KPIProgressRecord[]> => {
+        if (!kpi.kpiId) return [];
+        const extActor = await getExtendedActor(identity);
+        const raw = await extActor.getKPIProgressList(kpi.kpiId);
+        return raw.map((r) => ({
+          ...r,
+          periodIndex: BigInt(
+            typeof r.periodIndex === "bigint"
+              ? r.periodIndex
+              : Number(r.periodIndex),
+          ),
+        }));
+      },
+      enabled: !!kpi.kpiId && !!identity,
+      staleTime: 0,
+    })),
+  });
+
+  return useMemo(() => {
+    let totalFinalScore = 0;
+    let allLoaded = true;
+
+    for (let i = 0; i < kpis.length; i++) {
+      const result = progressResults[i];
+      if (result?.isLoading) {
+        allLoaded = false;
+        continue;
+      }
+      const records = result?.data ?? [];
+      const kpi = kpis[i];
+      if (!kpi) continue;
+
+      // Calc yearly achievement based on period type
+      let yearlyAchievement = 0;
+      if (records.length > 0) {
+        const scores = records.map((p) => p.score);
+        if (kpi.kpiPeriod === "OneTime") {
+          yearlyAchievement = scores[0] ?? 0;
+        } else {
+          yearlyAchievement = scores.reduce((a, b) => a + b, 0) / scores.length;
+        }
+      }
+      totalFinalScore += yearlyAchievement * (kpi.kpiWeight / 100);
+    }
+
+    return { totalFinalScore, allLoaded };
+  }, [kpis, progressResults]);
+}
+
 // ─── OKRs ─────────────────────────────────────────────────────────────────────
 
 function normalizeOKR(raw: OKR): OKR {
@@ -976,6 +1043,39 @@ export function useUpdateOKRProgress() {
     }) => {
       if (!actor) throw new Error("Not authenticated");
       return actor.updateOKRProgress(okrId, realization, notes);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["okrs"] });
+    },
+  });
+}
+
+export function useUpdateOKRProgressWithDate() {
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      okrId,
+      realization,
+      notes,
+      revisedTargetDate,
+    }: {
+      okrId: string;
+      realization: string;
+      notes: string | null;
+      revisedTargetDate: string | null;
+    }) => {
+      const extActor = await getExtendedActor(identity);
+      const notesOpt: [string] | [] = notes?.trim() ? [notes.trim()] : [];
+      const dateOpt: [string] | [] = revisedTargetDate?.trim()
+        ? [revisedTargetDate.trim()]
+        : [];
+      return extActor.updateOKRProgressWithDate(
+        okrId,
+        realization,
+        notesOpt,
+        dateOpt,
+      );
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["okrs"] });

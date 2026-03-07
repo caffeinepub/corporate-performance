@@ -2192,4 +2192,83 @@ actor {
     filtered;
   };
 
+
+  public shared ({ caller }) func updateOKRProgressWithDate(
+    okrId : OKRId,
+    realization : Text,
+    notes : ?Text,
+    revisedTargetDate : ?Text,
+  ) : async () {
+    let user = requireActiveUser(caller);
+
+    switch (okrs.get(okrId)) {
+      case (null) { Runtime.trap("OKR not found") };
+      case (?okr) {
+        requireSameCompany(caller, okr.companyId);
+
+        switch (roleAssignments.get(okr.ownerRoleAssignmentId)) {
+          case (null) { Runtime.trap("Owner role assignment not found") };
+          case (?ownerRole) {
+            if (ownerRole.userId != user.userId) {
+              Runtime.trap("Unauthorized: Only the OKR owner can update progress");
+            };
+          };
+        };
+
+        if (okr.okrStatus != #Approved) {
+          Runtime.trap("OKR must be APPROVED to update progress");
+        };
+
+        switch (kpiYears.get(okr.kpiYearId)) {
+          case (null) { Runtime.trap("KPI Year not found") };
+          case (?year) {
+            if (year.status != #Open) {
+              Runtime.trap("KPI Year must be OPEN to update OKR progress");
+            };
+          };
+        };
+
+        let realizationVariant = switch (realization) {
+          case ("BACKLOG") { #Backlog };
+          case ("ON_PROGRESS") { #OnProgress };
+          case ("PENDING") { #Pending };
+          case ("DONE") { #Done };
+          case ("CARRIED_FOR_NEXT_YEAR") { #CarriedForNextYear };
+          case (_) { Runtime.trap("Invalid realization value") };
+        };
+
+        let newRevisedTargetDate : ?Text = switch (revisedTargetDate) {
+          case (null) { okr.revisedTargetDate };
+          case (?d) {
+            if (d == "") { okr.revisedTargetDate }
+            else { ?d }
+          };
+        };
+
+        let updated : OKR = {
+          okrId = okr.okrId;
+          companyId = okr.companyId;
+          kpiYearId = okr.kpiYearId;
+          ownerRoleAssignmentId = okr.ownerRoleAssignmentId;
+          approver1RoleAssignmentId = okr.approver1RoleAssignmentId;
+          approver2RoleAssignmentId = okr.approver2RoleAssignmentId;
+          okrStatus = okr.okrStatus;
+          okrAspect = okr.okrAspect;
+          objective = okr.objective;
+          keyResult = okr.keyResult;
+          targetValue = okr.targetValue;
+          initialTargetDate = okr.initialTargetDate;
+          revisedTargetDate = newRevisedTargetDate;
+          realization = realizationVariant;
+          notes;
+          createdAt = okr.createdAt;
+          createdBy = okr.createdBy;
+        };
+
+        okrs.add(okrId, updated);
+        logAudit(user.companyId, "OKR", okrId, "UPDATE_PROGRESS", caller);
+      };
+    };
+  };
+
 };

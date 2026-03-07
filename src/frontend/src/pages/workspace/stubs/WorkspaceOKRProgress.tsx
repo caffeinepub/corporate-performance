@@ -36,7 +36,7 @@ import {
   useListKPIYears,
   useListOKRs,
   useMyProfile,
-  useUpdateOKRProgress,
+  useUpdateOKRProgressWithDate,
 } from "../../../hooks/useQueries";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -134,27 +134,26 @@ function OKRProgressCard({
   isYearOpen,
   delay,
 }: OKRProgressCardProps) {
-  const updateProgress = useUpdateOKRProgress();
+  const updateProgress = useUpdateOKRProgressWithDate();
   const aspect = getAspectConfig(okr.okrAspect);
 
   // Initialize with backend's current realization value
   const currentBackendValue = getRealizationBackendValue(okr.realization);
   const [realization, setRealization] = useState(currentBackendValue);
   const [notes, setNotes] = useState(okr.notes ?? "");
+  const [revisedTargetDate, setRevisedTargetDate] = useState(
+    okr.revisedTargetDate ?? "",
+  );
   const [saved, setSaved] = useState(false);
   const isSaving = updateProgress.isPending;
 
-  // revisedTargetDate is read-only for APPROVED OKRs since updateOKR requires
-  // DRAFT or REVISED status. Progress updates only update realization + notes.
-  const revisedTargetDateDisplay = okr.revisedTargetDate ?? "";
-
   const handleSave = async () => {
     try {
-      // Only call updateOKRProgress — updateOKR would fail for APPROVED status
       await updateProgress.mutateAsync({
         okrId: okr.okrId,
         realization,
         notes: notes.trim() || null,
+        revisedTargetDate: revisedTargetDate.trim() || null,
       });
       setSaved(true);
       toast.success("Progress updated");
@@ -273,28 +272,40 @@ function OKRProgressCard({
           </p>
         </div>
 
-        {/* Revised Target Date — read-only for APPROVED OKRs */}
+        {/* Revised Target Date — editable via updateOKRProgressWithDate */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium">
+          <Label
+            htmlFor={`revised-date-${okr.okrId}`}
+            className="text-sm font-medium flex items-center gap-1.5"
+          >
+            <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
             Revised Target Date{" "}
             <span className="text-muted-foreground font-normal">
               (optional)
             </span>
           </Label>
-          <div
-            className="flex items-center gap-2 px-3 py-2 rounded-md text-sm"
-            style={{
-              background: "oklch(0.95 0.010 252)",
-              color: "oklch(0.42 0.04 258)",
-            }}
-          >
-            <Calendar className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
-            <span>
-              {revisedTargetDateDisplay || (
-                <span className="italic text-muted-foreground">Not set</span>
-              )}
-            </span>
-          </div>
+          <input
+            id={`revised-date-${okr.okrId}`}
+            type="date"
+            value={revisedTargetDate}
+            onChange={(e) => setRevisedTargetDate(e.target.value)}
+            disabled={!isYearOpen}
+            className={[
+              "w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm",
+              "ring-offset-background placeholder:text-muted-foreground",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              !isYearOpen ? "opacity-60 cursor-not-allowed" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            data-ocid={"okr.progress.revised_date.input"}
+          />
+          {okr.revisedTargetDate && (
+            <p className="text-xs text-muted-foreground">
+              Current:{" "}
+              <span className="font-medium">{okr.revisedTargetDate}</span>
+            </p>
+          )}
         </div>
 
         {/* Notes */}
