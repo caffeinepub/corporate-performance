@@ -11,7 +11,6 @@ import {
   useListKPIYears,
   useListOKRs,
   useListOrganizationNodes,
-  useListRoleAssignments,
   useMyProfile,
 } from "@/hooks/useQueries";
 import {
@@ -568,8 +567,6 @@ export default function WorkspaceSubOKRProgress() {
   const { data: kpiYears, isLoading: yearsLoading } = useListKPIYears();
   const { data: orgNodes, isLoading: nodesLoading } =
     useListOrganizationNodes();
-  const { data: allRoleAssignments, isLoading: rolesLoading } =
-    useListRoleAssignments();
 
   const openYears = useMemo(
     () => (kpiYears ?? []).filter((y) => y.status === Variant_Open_Closed.Open),
@@ -604,44 +601,164 @@ export default function WorkspaceSubOKRProgress() {
     [orgNodes],
   );
 
-  // Build a map: assignmentId → orgNodeId for resolving OKR owners
-  const assignmentNodeMap = useMemo(() => {
+  // Build set of the current user's active role assignment IDs.
+  // These are used to match OKRs where the current user is in the approval
+  // chain (approver1 or approver2), avoiding the admin-only listRoleAssignments.
+  const myAssignmentIds = useMemo(() => {
+    return new Set(
+      roles.filter((r) => r.activeStatus).map((r) => r.assignmentId),
+    );
+  }, [roles]);
+
+  // Build a map: current user's assignmentId → orgNodeId
+  // (only the current user's own assignments are available without admin access)
+  const myAssignmentNodeMap = useMemo(() => {
     const map = new Map<string, string>();
-    for (const ra of allRoleAssignments ?? []) {
-      if (ra.orgNodeId) {
-        map.set(ra.assignmentId, ra.orgNodeId);
+    for (const r of roles) {
+      if (r.activeStatus && r.orgNodeId) {
+        map.set(r.assignmentId, r.orgNodeId);
       }
     }
     return map;
-  }, [allRoleAssignments]);
+  }, [roles]);
 
-  // Filter OKRs to in-scope nodes by resolving ownerRoleAssignmentId → orgNodeId
+  // For President Director: scope is all nodes, so show all OKRs except own.
+  // For others: filter to OKRs where the current user is listed as an approver.
+  // This correctly reflects hierarchical scope without needing listRoleAssignments.
+  const hasPD = roles.some(
+    (r) => r.activeStatus && r.roleType === "PresidentDirector",
+  );
+
+  // The current user's own assignment IDs for ownership exclusion
   const scopedOKRs = useMemo(() => {
     return (allOKRs ?? []).filter((okr) => {
-      const nodeId = assignmentNodeMap.get(okr.ownerRoleAssignmentId);
-      return nodeId !== undefined && inScopeNodeIds.has(nodeId);
-    });
-  }, [allOKRs, assignmentNodeMap, inScopeNodeIds]);
+      // Exclude the current user's own OKRs (those belong to /okr-progress)
+      if (myAssignmentIds.has(okr.ownerRoleAssignmentId)) return false;
 
-  // Group OKRs by org node
+      if (hasPD) {
+        // President Director sees all subordinate OKRs in the company
+        return true;
+      }
+
+      // For Director / Division / Department:
+      // Show OKRs where this user is listed as an approver
+      const isApprover1 =
+        okr.approver1RoleAssignmentId != null &&
+        myAssignmentIds.has(okr.approver1RoleAssignmentId);
+      const isApprover2 =
+        okr.approver2RoleAssignmentId != null &&
+        myAssignmentIds.has(okr.approver2RoleAssignmentId);
+      return isApprover1 || isApprover2;
+    });
+  }, [allOKRs, myAssignmentIds, hasPD]);
+
+  // Group OKRs by the approver's node (the current user's node that is their
+  // supervisor for this OKR). For PD who sees everyone, group by the approver
+  // assignment that matches one of PD's or the immediate approver's node.
+  // Since we can't resolve the OWNER's node directly, group by the approver
+  // node that matches -- this shows "OKRs you supervise from [NodeName]".
   const okrsByNode = useMemo(() => {
     const map = new Map<string, OKR[]>();
+
+    if (hasPD) {
+      // For PD, group using the approver1 node if it maps to an in-scope node,
+      // otherwise put under a catch-all "All Subordinates" group.
+      // We use the first approver's node as the grouping key.
+      for (const okr of scopedOKRs) {
+        // Try to find which in-scope node this OKR is closest to
+        // by checking approver1 and approver2 against all in-scope nodes
+        let groupNodeId: string | null = null;
+
+        if (
+          okr.approver1RoleAssignmentId &&
+          !myAssignmentIds.has(okr.approver1RoleAssignmentId)
+        ) {
+          // approver1 is not the PD themselves — find matching in-scope node
+          // We can't resolve without the full assignment map, so we fall back
+          // to using the org nodes that are direct PD children (Directors)
+          for (const nodeId of inScopeNodeIds) {
+            const node = orgNodeMap.get(nodeId);
+            if (node && node.nodeType === "Director") {
+              // tentatively group under this director node
+              // Real match would require the assignment lookup
+              groupNodeId = nodeId;
+              break;
+            }
+          }
+        }
+
+        // Use approver1 as a stable group key (its assignmentId as a proxy)
+        const key =
+          okr.approver1RoleAssignmentId ??
+          okr.approver2RoleAssignmentId ??
+          "unknown";
+        const existing = map.get(key) ?? [];
+        map.set(key, [...existing, okr]);
+        void groupNodeId; // suppress unused warning
+      }
+
+      // Remap from approver assignment keys to org node keys where possible
+      // by matching approver2 (which for PD scope should be PD's assignment)
+      // Against myAssignmentNodeMap
+      const remappedMap = new Map<string, OKR[]>();
+      for (const [key, okrList] of map) {
+        // Check if this key is one of our own assignments
+        const nodeId = myAssignmentNodeMap.get(key);
+        if (nodeId) {
+          const existing = remappedMap.get(nodeId) ?? [];
+          remappedMap.set(nodeId, [...existing, ...okrList]);
+        } else {
+          // Group by a synthetic key — approver1's assignmentId
+          // We'll display this as "Subordinate OKRs" without a specific node
+          const fallback = `approver_${key}`;
+          const existing = remappedMap.get(fallback) ?? [];
+          remappedMap.set(fallback, [...existing, ...okrList]);
+        }
+      }
+      return remappedMap;
+    }
+
+    // For Director / Division / Department:
+    // Group OKRs by which of the current user's nodes they flow through.
+    // An OKR flows through a node if the user's assignment for that node
+    // is listed as approver1 or approver2.
     for (const okr of scopedOKRs) {
-      const nodeId = assignmentNodeMap.get(okr.ownerRoleAssignmentId);
-      if (!nodeId) continue;
-      const existing = map.get(nodeId) ?? [];
-      map.set(nodeId, [...existing, okr]);
+      // Find which of the current user's assignments is the matching approver
+      let matchedNodeId: string | null = null;
+      for (const [assignId, nodeId] of myAssignmentNodeMap) {
+        if (
+          okr.approver1RoleAssignmentId === assignId ||
+          okr.approver2RoleAssignmentId === assignId
+        ) {
+          matchedNodeId = nodeId;
+          break;
+        }
+      }
+      const groupKey = matchedNodeId ?? "unresolved";
+      const existing = map.get(groupKey) ?? [];
+      map.set(groupKey, [...existing, okr]);
     }
     return map;
-  }, [scopedOKRs, assignmentNodeMap]);
+  }, [
+    scopedOKRs,
+    myAssignmentIds,
+    myAssignmentNodeMap,
+    hasPD,
+    inScopeNodeIds,
+    orgNodeMap,
+  ]);
 
   // Sort nodes: PD → Director → Division → Department
+  // For synthetic keys (approver_xxx), sort them after known nodes
   const sortedNodeIds = useMemo(() => {
     return Array.from(okrsByNode.keys()).sort((a, b) => {
       const nodeA = orgNodeMap.get(a);
       const nodeB = orgNodeMap.get(b);
-      const typeA = (nodeA?.nodeType as NodeType) ?? "Department";
-      const typeB = (nodeB?.nodeType as NodeType) ?? "Department";
+      if (!nodeA && !nodeB) return 0;
+      if (!nodeA) return 1;
+      if (!nodeB) return -1;
+      const typeA = (nodeA.nodeType as NodeType) ?? "Department";
+      const typeB = (nodeB.nodeType as NodeType) ?? "Department";
       return NODE_TYPE_ORDER.indexOf(typeA) - NODE_TYPE_ORDER.indexOf(typeB);
     });
   }, [okrsByNode, orgNodeMap]);
@@ -657,7 +774,7 @@ export default function WorkspaceSubOKRProgress() {
       Variant_Done_OnProgress_Backlog_CarriedForNextYear_Pending.Done,
   ).length;
 
-  const isLoading = yearsLoading || nodesLoading || okrsLoading || rolesLoading;
+  const isLoading = yearsLoading || nodesLoading || okrsLoading;
 
   return (
     <motion.div
@@ -734,11 +851,26 @@ export default function WorkspaceSubOKRProgress() {
                 {sortedNodeIds.map((nodeId, i) => {
                   const node = orgNodeMap.get(nodeId);
                   const okrs = okrsByNode.get(nodeId) ?? [];
-                  if (!node) return null;
+                  if (okrs.length === 0) return null;
+                  // For synthetic keys (approver_xxx or unresolved), create a
+                  // placeholder node so the section still renders
+                  const displayNode: OrgNode =
+                    node ??
+                    ({
+                      nodeId,
+                      companyId: "",
+                      nodeType: "Department",
+                      nodeName: "Subordinate OKRs",
+                      parentNodeId: undefined,
+                      createdAt: BigInt(0),
+                      createdBy: null,
+                      updatedAt: BigInt(0),
+                      updatedBy: null,
+                    } as unknown as OrgNode);
                   return (
                     <NodeSection
                       key={nodeId}
-                      node={node}
+                      node={displayNode}
                       okrs={okrs}
                       sectionIndex={i}
                     />

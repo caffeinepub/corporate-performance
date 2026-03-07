@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -37,7 +36,6 @@ import {
   useListKPIYears,
   useListOKRs,
   useMyProfile,
-  useUpdateOKR,
   useUpdateOKRProgress,
 } from "../../../hooks/useQueries";
 
@@ -137,38 +135,27 @@ function OKRProgressCard({
   delay,
 }: OKRProgressCardProps) {
   const updateProgress = useUpdateOKRProgress();
-  const updateOKR = useUpdateOKR();
   const aspect = getAspectConfig(okr.okrAspect);
 
   // Initialize with backend's current realization value
   const currentBackendValue = getRealizationBackendValue(okr.realization);
   const [realization, setRealization] = useState(currentBackendValue);
   const [notes, setNotes] = useState(okr.notes ?? "");
-  const [revisedTargetDate, setRevisedTargetDate] = useState(
-    okr.revisedTargetDate ?? "",
-  );
   const [saved, setSaved] = useState(false);
-  const isSaving = updateProgress.isPending || updateOKR.isPending;
+  const isSaving = updateProgress.isPending;
+
+  // revisedTargetDate is read-only for APPROVED OKRs since updateOKR requires
+  // DRAFT or REVISED status. Progress updates only update realization + notes.
+  const revisedTargetDateDisplay = okr.revisedTargetDate ?? "";
 
   const handleSave = async () => {
     try {
-      // Save progress (realization + notes) and revisedTargetDate in parallel
-      await Promise.all([
-        updateProgress.mutateAsync({
-          okrId: okr.okrId,
-          realization,
-          notes: notes.trim() || null,
-        }),
-        updateOKR.mutateAsync({
-          okrId: okr.okrId,
-          okrAspect: okr.okrAspect,
-          objective: okr.objective,
-          keyResult: okr.keyResult,
-          targetValue: okr.targetValue,
-          initialTargetDate: okr.initialTargetDate,
-          revisedTargetDate: revisedTargetDate.trim() || null,
-        }),
-      ]);
+      // Only call updateOKRProgress — updateOKR would fail for APPROVED status
+      await updateProgress.mutateAsync({
+        okrId: okr.okrId,
+        realization,
+        notes: notes.trim() || null,
+      });
       setSaved(true);
       toast.success("Progress updated");
       setTimeout(() => setSaved(false), 2500);
@@ -286,42 +273,28 @@ function OKRProgressCard({
           </p>
         </div>
 
-        {/* Revised Target Date */}
+        {/* Revised Target Date — read-only for APPROVED OKRs */}
         <div className="space-y-1.5">
-          <Label
-            htmlFor={`revised-date-${okr.okrId}`}
-            className="text-sm font-medium"
-          >
+          <Label className="text-sm font-medium">
             Revised Target Date{" "}
             <span className="text-muted-foreground font-normal">
               (optional)
             </span>
           </Label>
-          {isYearOpen ? (
-            <Input
-              id={`revised-date-${okr.okrId}`}
-              type="date"
-              value={revisedTargetDate}
-              onChange={(e) => setRevisedTargetDate(e.target.value)}
-              className="text-sm h-9"
-              data-ocid="okr.revised_date.input"
-            />
-          ) : (
-            <div
-              className="flex items-center gap-2 px-3 py-2 rounded-md text-sm"
-              style={{
-                background: "oklch(0.95 0.010 252)",
-                color: "oklch(0.42 0.04 258)",
-              }}
-            >
-              <Calendar className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
-              <span>
-                {revisedTargetDate || (
-                  <span className="italic text-muted-foreground">Not set</span>
-                )}
-              </span>
-            </div>
-          )}
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-md text-sm"
+            style={{
+              background: "oklch(0.95 0.010 252)",
+              color: "oklch(0.42 0.04 258)",
+            }}
+          >
+            <Calendar className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
+            <span>
+              {revisedTargetDateDisplay || (
+                <span className="italic text-muted-foreground">Not set</span>
+              )}
+            </span>
+          </div>
         </div>
 
         {/* Notes */}
